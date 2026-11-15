@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import SEO from '../components/SEO';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, ArrowRight, ArrowLeft } from 'lucide-react';
-import { getAssessmentById, submitAssessment } from '../services/assessmentService';
+import { submitAssessment } from '../services/assessmentService';
 import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -11,24 +11,26 @@ export default function AssessmentRunner() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
   const markAssessmentCompleted = useUserDataStore((s) => s.markAssessmentCompleted);
+  const assessments = useUserDataStore((s) => s.assessments) || [];
+  const assessment = assessments.find((item) => item.id === assessmentId) || null;
   
-  const [assessment, setAssessment] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const loading = !assessment;
   
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState({}); // questionId -> selectedIndex
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch assessment & restore in-progress answers from sessionStorage if present
+  // Restore in-progress answers from sessionStorage using the prefetched catalog.
   useEffect(() => {
-    getAssessmentById(assessmentId)
-      .then((data) => {
-        setAssessment(data);
+    if (!assessment) {
+      navigate('/assessment');
+      return;
+    }
 
         let initialIndex = 0;
         let initialAnswers = {};
-        let initialTime = data.durationMinutes * 60;
+        let initialTime = assessment.durationMinutes * 60;
 
         // Restore saved progress from sessionStorage (scoped to assessmentId)
         try {
@@ -36,7 +38,7 @@ export default function AssessmentRunner() {
           if (savedProgressRaw) {
             const savedProgress = JSON.parse(savedProgressRaw);
             if (savedProgress) {
-              if (typeof savedProgress.currentQuestionIndex === 'number' && savedProgress.currentQuestionIndex < data.questions.length) {
+              if (typeof savedProgress.currentQuestionIndex === 'number' && savedProgress.currentQuestionIndex < assessment.questions.length) {
                 initialIndex = savedProgress.currentQuestionIndex;
               }
               if (savedProgress.answers && typeof savedProgress.answers === 'object') {
@@ -54,13 +56,7 @@ export default function AssessmentRunner() {
         setCurrentIndex(initialIndex);
         setAnswers(initialAnswers);
         setTimeLeft(initialTime);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        navigate('/assessment'); // redirect on error
-      });
-  }, [assessmentId, navigate]);
+  }, [assessmentId, assessment, navigate]);
 
   // Submit handler
   const handleSubmit = useCallback(async () => {

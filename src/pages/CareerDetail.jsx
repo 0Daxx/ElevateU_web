@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from 'react';
 import SEO from '../components/SEO';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Navigate } from 'react-router-dom';
 import { ArrowLeft, TrendingUp, IndianRupee, Target, CheckCircle2, AlertCircle } from 'lucide-react';
-import { getCareerDetail } from '../services/careerService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -10,28 +9,12 @@ import Button from '../components/ui/Button';
 export default function CareerDetail() {
   const { careerId } = useParams();
   const navigate = useNavigate();
-  
-  const [career, setCareer] = useState(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    getCareerDetail(careerId)
-      .then((data) => {
-        setCareer(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        navigate('/career-recommendations');
-      });
-  }, [careerId, navigate]);
-
-  if (loading) {
-    return (<div className="flex items-center justify-center min-h-[50vh]">
-        <div className="animate-spin h-8 w-8 border-4 border-secondary border-t-transparent rounded-full" />
-      </div>
-    );
-  }
+  const careers = useUserDataStore((state) => state.careerRecommendations) || [];
+  const careerError = useUserDataStore((state) => state.careerRecommendationsError);
+  const retrySlice = useUserDataStore((state) => state.retrySlice);
+  const career = careers.find((item) => item.id === careerId);
+  if (careerError) return <div className="p-6 text-center"><p>Career details could not be loaded.</p><Button onClick={() => retrySlice('careerRecommendations')}>Retry</Button></div>;
+  if (!career) return <Navigate to="/career-recommendations" replace />;
 
   const {
     title,

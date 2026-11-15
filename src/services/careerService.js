@@ -57,13 +57,37 @@ function calculateMatchScore(career, profileInterests, profileSkills) {
   return Math.min(100, score);
 }
 
+/** Pure skill-gap calculation over roadmap data already in the user store. */
+export function getSkillGapAnalysisFromRoadmap(detail) {
+  const topics = detail?.topics || [];
+  const skillComparison = topics.map((topic, index) => {
+    const subtopics = topic.subtopics || [];
+    const completed = subtopics.filter((subtopic) => subtopic.status === 'completed').length;
+    const progress = subtopics.length ? completed / subtopics.length : 0;
+    const position = index / Math.max(1, topics.length - 1);
+    const requiredLevel = position < 0.25 ? 'Beginner' : position > 0.75 ? 'Advanced' : 'Intermediate';
+    const requiredScore = { Beginner: 33, Intermediate: 66, Advanced: 100 }[requiredLevel];
+    const currentLevel = progress >= 1 ? 'Advanced' : progress >= 0.5 ? 'Intermediate' : progress > 0 ? 'Beginner' : 'None';
+    const currentScore = { None: 0, Beginner: 33, Intermediate: 66, Advanced: 100 }[currentLevel];
+    return { skill: topic.title, currentLevel, requiredLevel, currentScore, requiredScore, gap: Math.max(0, requiredScore - currentScore) };
+  });
+  const required = skillComparison.reduce((sum, item) => sum + item.requiredScore, 0);
+  const covered = skillComparison.reduce((sum, item) => sum + Math.min(item.currentScore, item.requiredScore), 0);
+  return {
+    careerTitle: detail?.roadmap?.title || 'Learning roadmap',
+    overallReadiness: required ? Math.round((covered / required) * 100) : 0,
+    skillComparison,
+    recommendedFocus: skillComparison.filter((item) => item.gap > 0).sort((a, b) => b.gap - a.gap).slice(0, 3).map((item) => item.skill),
+  };
+}
+
 /**
  * Fetch a ranked list of recommended careers for the current user.
  */
-export async function getRecommendations() {
+export async function getRecommendations(profileOverride = null) {
   await delay(700);
   
-  const profile = await getProfile();
+  const profile = profileOverride || await getProfile();
   // In a real app, we might also parse completed assessments here to boost scores,
   // but for this mock, we rely directly on the profile skills.
   // const assessments = await getAssessments();

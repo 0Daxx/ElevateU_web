@@ -1,5 +1,6 @@
-import { describe, it, expect } from 'vitest';
-import { validateInputGuardrails, validateOutputGuardrails } from '../ai/securityGuardrails';
+import { describe, it, expect, vi } from 'vitest';
+vi.mock('../ai/llmPromptAdapter', () => ({ generateContent: vi.fn().mockResolvedValue(null) }));
+import { validateInputGuardrails } from '../ai/securityGuardrails';
 import { routeMessage, AGENT_TYPES } from '../ai/agents/routerAgent';
 import { memoryManager } from '../ai/memoryManager';
 import { mcpServer } from '../mcp/elevateuMcpServer';

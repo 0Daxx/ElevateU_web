@@ -5,8 +5,7 @@ import {
   BookOpen, Briefcase, Star, Clock, MapPin, 
   IndianRupee, Flame, CheckCircle2 
 } from 'lucide-react';
-import { getCourseRecommendations, getOpportunityRecommendations } from '../services/opportunityService';
-import { getProfile } from '../services/profileService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -65,15 +64,19 @@ export default function CoursesAndJobs() {
   const initialSkillFilter = location.state?.filterSkill || '';
 
   const [activeTab, setActiveTab] = useState('courses'); // 'courses' or 'jobs'
-  const [profileSkills, setProfileSkills] = useState([]);
-  const [profileInterests, setProfileInterests] = useState([]);
-  const [profileCareerGoals, setProfileCareerGoals] = useState([]);
-
-  // Data states
-  const [courses, setCourses] = useState([]);
-  const [opportunities, setOpportunities] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const courses = useUserDataStore((state) => state.courseRecommendations) || [];
+  const opportunities = useUserDataStore((state) => state.opportunityRecommendations) || [];
+  const profile = useUserDataStore((state) => state.profile);
+  const loading = useUserDataStore((state) => state.courseRecommendationsLoading || state.opportunityRecommendationsLoading);
+  const error = useUserDataStore((state) => state.courseRecommendationsError || state.opportunityRecommendationsError);
+  const retrySlice = useUserDataStore((state) => state.retrySlice);
+  const profileSkills = (profile?.skills || []).map((skill) => skill.name.toLowerCase());
+  const profileInterests = (profile?.interests || []).map((interest) => interest.toLowerCase());
+  const profileCareerGoals = (profile?.careerGoals || []).map((goal) => goal.toLowerCase());
+  const fetchData = () => {
+    retrySlice('courseRecommendations');
+    retrySlice('opportunityRecommendations');
+  };
 
   // Filter states - Courses
   const [courseType, setCourseType] = useState('All');
@@ -83,33 +86,6 @@ export default function CoursesAndJobs() {
   // Filter states - Jobs
   const [jobType, setJobType] = useState('All');
   const [jobLocation, setJobLocation] = useState('');
-
-  // 1. Fetch data on mount
-  const fetchData = async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const [courseData, oppData, profileData] = await Promise.all([
-        getCourseRecommendations(),
-        getOpportunityRecommendations(),
-        getProfile()
-      ]);
-      setCourses(courseData);
-      setOpportunities(oppData);
-      setProfileSkills(profileData.skills?.map(s => s.name.toLowerCase()) || []);
-      setProfileInterests(profileData.interests?.map(i => i.toLowerCase()) || []);
-      setProfileCareerGoals(profileData.careerGoals?.map(g => g.toLowerCase()) || []);
-    } catch (err) {
-      console.error(err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  useEffect(() => {
-    fetchData();
-  }, []);
 
   // ─── Filtering Logic ────────────────────────────────────────────────────────
 

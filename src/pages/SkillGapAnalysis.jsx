@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import SEO from '../components/SEO';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -7,8 +7,7 @@ import {
 } from 'recharts';
 import { Target, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Map } from 'lucide-react';
 
-import { getSkillGapAnalysis } from '../services/careerService';
-import { setActiveRoadmap } from '../services/roadmapService';
+import { getSkillGapAnalysisFromRoadmap } from '../services/careerService';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDataStore } from '../store/userDataStore';
@@ -109,112 +108,43 @@ export default function SkillGapAnalysis() {
     surface:   'var(--color-bg-surface)',
   }), [theme]);
 
-  // ── User's roadmap selections — read from pre-fetched global store ───────
-  const storeUserRoadmaps = useUserDataStore((s) => s.userRoadmaps);
-  const storeLoading      = useUserDataStore((s) => s.userRoadmapsLoading);
-
-  const [userRoadmaps, setUserRoadmaps]           = useState(storeUserRoadmaps ?? []);
-  const [loadingRoadmaps, setLoadingRoadmaps]     = useState(!storeUserRoadmaps && storeLoading);
-
-  // The currently selected selection row id (not roadmap_id)
-  const [selectedSelectionId, setSelectedSelectionId] = useState(null);
+  // Roadmaps and their progress are hydrated before protected pages render.
+  const userRoadmaps = useUserDataStore((state) => state.userRoadmaps) || [];
+  const roadmapDetails = useUserDataStore((state) => state.roadmapDetails) || {};
+  const loadingRoadmaps = useUserDataStore((state) => state.userRoadmapsLoading);
+  const loadingAnalysis = useUserDataStore((state) => state.roadmapDetailsLoading);
+  const errorAnalysis = useUserDataStore((state) => state.roadmapDetailsError);
+  const activateRoadmap = useUserDataStore((state) => state.activateRoadmap);
+  const retrySlice = useUserDataStore((state) => state.retrySlice);
+  const [selectedSelectionId, setSelectedSelectionId] = useState(() =>
+    userRoadmaps.find((row) => row.is_active)?.id || userRoadmaps[0]?.id || null
+  );
   const [activatingId, setActivatingId] = useState(null);
-
-  // ── Skill gap analysis (static careerService, kept for chart data) ────────
-  const [analysis, setAnalysis] = useState(null);
-  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
-  const [errorAnalysis, setErrorAnalysis] = useState(false);
-
-  // 1. Load user's roadmaps — use pre-fetched store data if available, otherwise fetch
-  const loadUserRoadmaps = useCallback(async () => {
-    if (!user) return;
-    // If the store already has data, use it immediately (no spinner)
-    if (storeUserRoadmaps && storeUserRoadmaps.length >= 0 && !storeLoading) {
-      setUserRoadmaps(storeUserRoadmaps);
-      setLoadingRoadmaps(false);
-      const active = storeUserRoadmaps.find((r) => r.is_active);
-      if (active) {
-        setSelectedSelectionId(active.id);
-      } else if (storeUserRoadmaps.length > 0) {
-        setSelectedSelectionId(storeUserRoadmaps[0].id);
-      }
-      return;
-    }
-    setLoadingRoadmaps(true);
-    try {
-      const rows = await fetchUserRoadmaps(user.id);
-      setUserRoadmaps(rows);
-
-      // Auto-select the active one (if any); otherwise pick the first
-      const active = rows.find((r) => r.is_active);
-      if (active) {
-        setSelectedSelectionId(active.id);
-      } else if (rows.length > 0) {
-        setSelectedSelectionId(rows[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load user roadmaps', err);
-    } finally {
-      setLoadingRoadmaps(false);
-    }
-  }, [user, storeUserRoadmaps, storeLoading]);
-
-  useEffect(() => { loadUserRoadmaps(); }, [loadUserRoadmaps]);
-
-  // 2. Fetch skill gap analysis whenever the selected roadmap changes.
-  //    We reuse the existing careerService mapping the selected roadmap
-  //    to the closest dummy career in dummyCareers.js.
-  const fetchAnalysis = useCallback(() => {
-    if (!selectedSelectionId) return;
-    setLoadingAnalysis(true);
-    setErrorAnalysis(false);
-
-    // Find the selected row to grab a career title and roadmap_id
-    const row = userRoadmaps.find((r) => r.id === selectedSelectionId);
-    if (!row) return;
-
-    const title = row?.roadmaps?.title || 'Full Stack';
-    const roadmapId = row?.roadmap_id;
-
-    getSkillGapAnalysis(roadmapId)
-      .then((data) => {
-        setAnalysis(data);
-        setLoadingAnalysis(false);
-      })
-      .catch((err) => {
-        console.error(err);
-        setErrorAnalysis(true);
-        setLoadingAnalysis(false);
-      });
-  }, [selectedSelectionId, userRoadmaps]);
+  const selectedRow = userRoadmaps.find((row) => row.id === selectedSelectionId);
+  const selectedDetail = selectedRow ? roadmapDetails[selectedRow.roadmap_id] : null;
+  const analysis = selectedDetail ? getSkillGapAnalysisFromRoadmap(selectedDetail) : null;
+  const retryAnalysis = () => retrySlice('roadmapDetails', user?.id);
 
   useEffect(() => {
-    if (selectedSelectionId && userRoadmaps.length > 0) {
-      fetchAnalysis();
+    if (!selectedSelectionId && userRoadmaps.length) {
+      const selection = userRoadmaps.find((row) => row.is_active) || userRoadmaps[0];
+      setSelectedSelectionId(selection.id);
     }
-  }, [selectedSelectionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedSelectionId, userRoadmaps]);
 
-  // 3. Handle dropdown change → set as active in DB
-  const handleRoadmapChange = async (e) => {
-    const newSelId = e.target.value;
-    setSelectedSelectionId(newSelId);
-
+  const handleRoadmapChange = async (event) => {
+    const selectionId = event.target.value;
+    setSelectedSelectionId(selectionId);
     if (!user) return;
-    setActivatingId(newSelId);
+    setActivatingId(selectionId);
     try {
-      await setActiveRoadmap(user.id, newSelId);
-      // Update local state to reflect new active
-      setUserRoadmaps((prev) =>
-        prev.map((r) => ({ ...r, is_active: r.id === newSelId }))
-      );
-    } catch (err) {
-      console.error('Failed to set active roadmap', err);
+      await activateRoadmap(user.id, selectionId);
+    } catch (error) {
+      console.error('Failed to activate roadmap:', error);
     } finally {
       setActivatingId(null);
     }
   };
-
-
   // ── Render Helpers ──────────────────────────────────────────────────────────
 
   const renderSkeleton = () => (
@@ -307,7 +237,7 @@ export default function SkillGapAnalysis() {
 
       {/* ── Main Content ───────────────────────────────────────────────────── */}
       {errorAnalysis ? (
-        <ErrorState onRetry={fetchAnalysis} />
+        <ErrorState onRetry={retryAnalysis} />
       ) : loadingAnalysis || !analysis ? (
         renderSkeleton()
       ) : (

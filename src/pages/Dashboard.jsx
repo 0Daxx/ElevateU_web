@@ -298,11 +298,11 @@ export default function Dashboard() {
   }, [storeProfile, showSetupPrompt]);
 
   const handleProfileSave = async (updatedProfile) => {
+    if (user?.id) {
+      await updateProfileOpt(user.id, updatedProfile);
+    }
     setIsProfileSetupOpen(false);
     setShowSetupPrompt(false);
-    if (user?.id) {
-      await updateProfileOpt(user.id, updatedProfile).catch(() => {});
-    }
   };
 
   const handleProfileClose = () => {
@@ -312,8 +312,8 @@ export default function Dashboard() {
 
   const handleRetry = () => retrySlice('dashboardData', user?.id);
 
-  if (dataLoading || !storeData) return <DashboardSkeleton />;
   if (dataError) return <ErrorState onRetry={handleRetry} />;
+  if (dataLoading || !storeData) return <DashboardSkeleton />;
 
   const data           = storeData;
   const profile        = storeProfile;

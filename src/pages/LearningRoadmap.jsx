@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import SEO from '../components/SEO';
 import {
   CheckCircle2, Circle, BookOpen,
@@ -14,11 +14,6 @@ import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../hooks/useAuth';
 import { useUserDataStore } from '../store/userDataStore';
-import {
-  fetchActiveRoadmapDetail,
-  toggleSubtopicProgress,
-  computeRoadmapProgress,
-} from '../services/roadmapService';
 
 // ─── Category colour map ──────────────────────────────────────────────────────
 const CATEGORY_VARIANTS = {
@@ -179,36 +174,18 @@ function BrowseSection({ userId, onAdded }) {
 // ─── Section 2: Active Roadmap Detail ────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 function DetailSection({ userId }) {
-  const [detail, setDetail] = useState(null);   // fetchActiveRoadmapDetail result
-  const [progress, setProgress] = useState(0);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const detail = useUserDataStore((state) => state.activeRoadmap);
+  const progress = useUserDataStore((state) => state.activeRoadmapProgress) || 0;
+  const loading = useUserDataStore((state) => state.roadmapDetailsLoading);
+  const error = useUserDataStore((state) => state.roadmapDetailsError);
+  const retrySlice = useUserDataStore((state) => state.retrySlice);
+  const toggleSubtopic = useUserDataStore((state) => state.toggleSubtopic);
   const [expandedIds, setExpandedIds] = useState(new Set());
   const [togglingId, setTogglingId] = useState(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const data = await fetchActiveRoadmapDetail(userId);
-      setDetail(data);
-      if (data) {
-        const p = await computeRoadmapProgress(userId, data.roadmap.id);
-        setProgress(p);
-        // Auto-expand first topic
-        if (data.topics.length > 0) {
-          setExpandedIds(new Set([data.topics[0].id]));
-        }
-      }
-    } catch (err) {
-      console.error(err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    if (detail?.topics?.length) setExpandedIds(new Set([detail.topics[0].id]));
+  }, [detail?.roadmap?.id]);
 
   const toggleTopic = (id) => {
     setExpandedIds((prev) => {
@@ -219,32 +196,11 @@ function DetailSection({ userId }) {
     });
   };
 
-  const handleToggleSubtopic = async (topicId, subtopic) => {
+  const handleToggleSubtopic = async (subtopic) => {
     if (togglingId) return;
     setTogglingId(subtopic.id);
     try {
-      const newStatus = await toggleSubtopicProgress(userId, subtopic.id, subtopic.status);
-
-      // Update local state optimistically
-      setDetail((prev) => {
-        if (!prev) return prev;
-        return {
-          ...prev,
-          topics: prev.topics.map((t) => {
-            if (t.id !== topicId) return t;
-            return {
-              ...t,
-              subtopics: t.subtopics.map((s) =>
-                s.id === subtopic.id ? { ...s, status: newStatus } : s
-              ),
-            };
-          }),
-        };
-      });
-
-      // Recompute progress
-      const newProgress = await computeRoadmapProgress(userId, detail.roadmap.id);
-      setProgress(newProgress);
+      await toggleSubtopic(userId, subtopic.id, subtopic.status);
     } catch (err) {
       console.error(err);
     } finally {
@@ -265,7 +221,7 @@ function DetailSection({ userId }) {
     );
   }
 
-  if (error) return <ErrorState onRetry={load} />;
+  if (error) return <ErrorState onRetry={() => retrySlice('roadmapDetails', userId)} />;
 
   if (!detail) {
     return (
@@ -375,7 +331,7 @@ function DetailSection({ userId }) {
                                 <div className="relative">
                                   <Checkbox
                                     checked={isDone}
-                                    onChange={() => handleToggleSubtopic(topic.id, sub)}
+                                    onChange={() => handleToggleSubtopic(sub)}
                                     disabled={togglingId !== null}
                                     label={sub.title}
                                     id={`subtopic-${sub.id}`}
@@ -409,8 +365,6 @@ function DetailSection({ userId }) {
 export default function LearningRoadmap() {
   const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('browse');
-  // Key to force DetailSection to re-fetch after a roadmap is added
-  const [detailKey, setDetailKey] = useState(0);
 
   if (!user) {
     return (
@@ -469,11 +423,11 @@ export default function LearningRoadmap() {
           </p>
           <BrowseSection
             userId={user.id}
-            onAdded={() => setDetailKey((k) => k + 1)}
+            onAdded={() => setActiveTab('detail')}
           />
         </div>
       ) : (
-        <DetailSection key={detailKey} userId={user.id} />
+        <DetailSection userId={user.id} />
       )}
     </div>
   );

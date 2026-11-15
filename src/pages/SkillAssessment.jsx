@@ -75,8 +75,6 @@ export default function SkillAssessment() {
         </div>
       )}
       
-      {!loading && error && <ErrorState onRetry={fetchAssessments} />}
-
       {!loading && !error && filteredAssessments.length === 0 && (
         <EmptyState 
           title="No assessments found" 

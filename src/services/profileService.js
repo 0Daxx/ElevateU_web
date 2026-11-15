@@ -14,6 +14,10 @@
 // It is retained as the canonical data shape reference for TypeScript-style documentation.
 import dummyProfile from '../data/dummyProfile.js'; // eslint-disable-line no-unused-vars
 import { useAuthStore } from '../store/authStore';
+import { supabase } from '../config/supabaseClient';
+
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const isUuid = (id) => typeof id === 'string' && UUID_REGEX.test(id);
 
 // ─── Utility ──────────────────────────────────────────────────────────────────
 
@@ -87,7 +91,7 @@ let profileStore = loadProfileStore();
  *
  * @returns {Promise<Object>} Profile data shaped like the profile schema
  */
-export async function getProfile() {
+export async function getProfile(userId) {
   await delay(500);
 
   // Simulate a 5% random failure rate for QA testing Error States
@@ -95,8 +99,42 @@ export async function getProfile() {
     throw new Error('Failed to fetch profile data. Network error.');
   }
 
-  // Refresh profileStore from localStorage if updated in another context
+  // Refresh profileStore from the current user's local cache.
   profileStore = loadProfileStore();
+
+  const currentUserId = userId || useAuthStore.getState().user?.id;
+  if (isUuid(currentUserId)) {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, full_name, email, phone, college, degree, year, bio, avatar_url, skills, interests, social_links')
+      .eq('id', currentUserId)
+      .maybeSingle();
+    if (error) throw error;
+    if (data) {
+      profileStore = {
+        ...profileStore,
+        personal: {
+          ...profileStore.personal,
+          name: data.full_name || profileStore.personal?.name || '',
+          email: data.email || profileStore.personal?.email || '',
+          phone: data.phone || profileStore.personal?.phone || '',
+          location: data.college || profileStore.personal?.location || '',
+          avatarInitials: profileStore.personal?.avatarInitials || '',
+        },
+        education: data.degree || data.year || data.college
+          ? [{ institution: data.college || '', degree: data.degree || '', year: data.year || '' }]
+          : profileStore.education || [],
+        skills: (data.skills || []).map((name) => ({
+          name,
+          level: profileStore.skills?.find((skill) => skill.name === name)?.level || 'Beginner',
+        })),
+        interests: data.interests || [],
+        bio: data.bio || '',
+        avatarUrl: data.avatar_url || '',
+        socialLinks: data.social_links || {},
+      };
+    }
+  }
 
   return deepClone(profileStore);
 }
@@ -111,7 +149,7 @@ export async function getProfile() {
  * @param {Object} updatedData - Sections to overwrite
  * @returns {Promise<{ success: boolean, profile: Object }>}
  */
-export async function updateProfile(updatedData) {
+export async function updateProfile(updatedData, userId) {
   await delay(500);
 
   // Load the current store first
@@ -127,6 +165,26 @@ export async function updateProfile(updatedData) {
     },
     isCompleted: true, // mark profile as completed on update/save
   };
+
+  const currentUserId = userId || useAuthStore.getState().user?.id;
+  if (isUuid(currentUserId)) {
+    const firstEducation = profileStore.education?.[0] || {};
+    const { error } = await supabase.from('profiles').upsert({
+      id: currentUserId,
+      full_name: profileStore.personal?.name || '',
+      email: profileStore.personal?.email || '',
+      phone: profileStore.personal?.phone || '',
+      college: firstEducation.institution || firstEducation.college || profileStore.personal?.location || '',
+      degree: firstEducation.degree || '',
+      year: firstEducation.year || '',
+      bio: profileStore.bio || '',
+      avatar_url: profileStore.avatarUrl || null,
+      skills: (profileStore.skills || []).map((skill) => typeof skill === 'string' ? skill : skill.name),
+      interests: (profileStore.interests || []).map((interest) => typeof interest === 'string' ? interest : interest.name),
+      social_links: profileStore.socialLinks || {},
+    }, { onConflict: 'id' });
+    if (error) throw error;
+  }
 
   try {
     const user = useAuthStore.getState().user;

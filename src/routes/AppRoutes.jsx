@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 
 // Layout Shells & ErrorBoundary (Loaded statically to prevent shell flicker)
 import DashboardLayout from '../components/layout/DashboardLayout';
+import UserDataProvider from '../components/UserDataProvider';
 import ErrorBoundary from '../components/ErrorBoundary';
 import PageLoader from '../components/ui/PageLoader';
 
@@ -29,6 +30,8 @@ const SkillGapAnalysis = React.lazy(() => import('../pages/SkillGapAnalysis'));
 const ResumeAnalysis = React.lazy(() => import('../pages/ResumeAnalysis'));
 const CoursesAndJobs = React.lazy(() => import('../pages/CoursesAndJobs'));
 const LearningRoadmap = React.lazy(() => import('../pages/LearningRoadmap'));
+const SettingsPage = React.lazy(() => import('../pages/SettingsPage'));
+const FeedbackPage = React.lazy(() => import('../pages/FeedbackPage'));
 
 // ─── Lazy-Loaded Marketing Pages ─────────────────────────────────────────────
 const AboutPage = React.lazy(() => import('../pages/marketing/AboutPage'));
@@ -98,7 +101,9 @@ export default function AppRoutes() {
         <Route
           element={
             <ProtectedRoute>
-              <DashboardLayout />
+              <UserDataProvider>
+                <DashboardLayout />
+              </UserDataProvider>
             </ProtectedRoute>
           }
         >
@@ -113,7 +118,10 @@ export default function AppRoutes() {
           <Route path="/roadmap" element={<LearningRoadmap />} />
           <Route path="/resume-analysis" element={<ResumeAnalysis />} />
           <Route path="/courses" element={<CoursesAndJobs />} />
+          <Route path="/settings" element={<SettingsPage />} />
         </Route>
+
+        <Route path="/feedback" element={<ErrorBoundary><FeedbackPage /></ErrorBoundary>} />
 
         {/* Catch-all fallback */}
         <Route path="*" element={<NotFound />} />

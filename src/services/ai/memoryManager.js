@@ -113,6 +113,20 @@ ${facts}
       this.saveMemory();
     }
   }
+
+  clearAll() {
+    this.memory = {
+      ...DEFAULT_MEMORY_STATE,
+      userProfile: { ...DEFAULT_MEMORY_STATE.userProfile, currentSkills: [...DEFAULT_MEMORY_STATE.userProfile.currentSkills] },
+      longTermFacts: [...DEFAULT_MEMORY_STATE.longTermFacts],
+      sessions: {},
+    };
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+    } catch (error) {
+      console.warn('[MemoryManager] Failed clearing stored memory:', error);
+    }
+  }
 }
 
 export const memoryManager = new MemoryManager();

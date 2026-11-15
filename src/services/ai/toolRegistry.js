@@ -3,8 +3,9 @@
  * Exposes ElevateU domain capabilities as structured tools executable by AI Agents.
  */
 
-import { getProfile, updateProfile } from '../profileService';
-import { analyzeResume } from '../resumeService';
+import { getProfile } from '../profileService';
+import { getResumeAnalysis, getResumeHistory } from '../resumeService';
+import { useAuthStore } from '../../store/authStore';
 import { getRecommendations, getSkillGapAnalysis } from '../careerService';
 
 import { getOpportunityRecommendations } from '../opportunityService';
@@ -30,7 +31,7 @@ export const TOOL_DECLARATIONS = [
       },
       {
         name: 'analyze_resume_ats',
-        description: 'Analyzes a candidate resume or resume text against ATS criteria and target job description.',
+        description: 'Returns the signed-in user’s latest saved resume analysis and can label it with a target role.',
         parameters: {
           type: 'OBJECT',
           properties: {
@@ -105,8 +106,16 @@ export async function executeTool(name, args = {}) {
 
 
       case 'analyze_resume_ats': {
-        const mockFile = { name: 'Student_Resume_2026.pdf' };
-        const result = await analyzeResume(mockFile);
+        const userId = useAuthStore.getState().user?.id;
+        const [latest] = await getResumeHistory(userId);
+        if (!latest) return { success: false, tool: name, error: 'No saved resume analysis was found. Upload a resume in Resume Analysis first.' };
+        const saved = await getResumeAnalysis(latest.id, userId);
+        const result = {
+          ...saved.result,
+          atsScore: saved.result.overall_score,
+          missingKeywords: saved.result.missing_skills,
+          issues: saved.result.weaknesses.map((message) => ({ severity: 'medium', message })),
+        };
         if (args.jobDescription) {
           result.targetJob = args.jobDescription;
         }

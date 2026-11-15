@@ -19,7 +19,46 @@ const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  *
  * @returns {Promise<typeof dummyDashboard>}
  */
-export async function getDashboardData() {
+export async function getDashboardData(userIdOverride, snapshot = null) {
+  if (snapshot) {
+    const data = JSON.parse(JSON.stringify(dummyDashboard));
+    const roadmap = snapshot.activeRoadmap;
+    const profile = snapshot.profile;
+    const scores = snapshot.assessmentScores || {};
+    const completed = snapshot.completedAssessmentIds || new Set();
+    const completedCount = completed instanceof Set ? completed.size : completed.length || 0;
+    const completedTopics = (roadmap?.topics || []).filter((topic) => {
+      const subs = topic.subtopics || [];
+      return subs.length > 0 && subs.every((sub) => sub.status === 'completed');
+    }).length;
+    const inProgressTopics = (roadmap?.topics || []).filter((topic) => {
+      const subs = topic.subtopics || [];
+      return subs.some((sub) => sub.status === 'completed') && !subs.every((sub) => sub.status === 'completed');
+    }).length;
+    const readiness = Number(snapshot.overallProgress || 0);
+    data.careerReadinessScore = readiness;
+    data.readinessHistory = [
+      { week: 'W1', score: Math.round(readiness * 0.2) },
+      { week: 'W2', score: Math.round(readiness * 0.4) },
+      { week: 'W3', score: Math.round(readiness * 0.6) },
+      { week: 'W4', score: Math.round(readiness * 0.8) },
+      { week: 'W5', score: Math.round(readiness * 0.9) },
+      { week: 'W6', score: readiness },
+    ];
+    data.assessmentsCompleted = completedCount;
+    data.assessmentsTotal = 4;
+    data.coursesCompleted = completedTopics;
+    data.coursesInProgress = inProgressTopics;
+    data.skillsLearned = profile?.skills?.length || 0;
+    data.skillBreakdown = [
+      { skill: 'Technical', value: readiness },
+      { skill: 'Communication', value: scores['comm-skills'] || 0 },
+      { skill: 'Problem Solving', value: scores['prob-solving'] || 0 },
+      { skill: 'Leadership', value: profile?.experience?.length ? Math.min(100, 30 + profile.experience.length * 20) : 0 },
+    ];
+    if (userIdOverride) data.recentActivity = getUserActivities(userIdOverride);
+    return data;
+  }
   await delay(600);
   
   // Simulate a 5% random failure rate for QA testing Error States

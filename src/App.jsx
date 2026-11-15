@@ -10,19 +10,19 @@ import { useAuthStore } from './store/authStore';
  * Listens for Supabase OAuth callback redirects & session events to synchronize global auth state.
  */
 export default function App() {
-  const login = useAuthStore((state) => state.login);
+  const syncSupabaseSession = useAuthStore((state) => state.syncSupabaseSession);
 
   useEffect(() => {
     const { data: { subscription } } = onAuthStateChange((event, session) => {
-      if (session?.user && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED')) {
-        login(session.user);
+      if (event === 'INITIAL_SESSION' || event === 'SIGNED_IN' || event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED' || event === 'USER_UPDATED') {
+        syncSupabaseSession(session);
       }
     });
 
     return () => {
       subscription?.unsubscribe();
     };
-  }, [login]);
+  }, [syncSupabaseSession]);
 
   return (
     <BrowserRouter basename={import.meta.env.BASE_URL}>

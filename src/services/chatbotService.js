@@ -15,7 +15,7 @@ import { handleResumeSpecialistTask } from './ai/agents/resumeSpecialistAgent';
 import { handleOpportunityMatcherTask } from './ai/agents/opportunityMatcherAgent';
 import { handleInterviewPrepTask } from './ai/agents/interviewPrepAgent';
 import { memoryManager } from './ai/memoryManager';
-import { generateContent } from './ai/geminiClient';
+import { generateContent } from './ai/llmPromptAdapter';
 import { hitlManager, HITL_ACTION_TYPES } from './ai/hitlManager';
 
 /**

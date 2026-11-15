@@ -107,18 +107,17 @@ export default function StudentProfile() {
 
   // ── After save: optimistically update store AND local state ──────────────
   const handleSave = async (updatedProfile) => {
-    setLocalProfile(updatedProfile);
-    setIsModalOpen(false);
     if (user?.id) {
-      await updateProfileOpt(user.id, updatedProfile).catch(() => {});
+      await updateProfileOpt(user.id, updatedProfile);
     }
+    setLocalProfile(updatedProfile);
   };
 
-  if (profileLoading || !profile) {
-    return <ProfileSkeleton />;
-  }
   if (profileError) {
     return <ErrorState onRetry={handleRetry} />;
+  }
+  if (profileLoading || !profile) {
+    return <ProfileSkeleton />;
   }
 
   const { personal, education, skills, interests, careerGoals, experience } = profile;

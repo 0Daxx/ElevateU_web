@@ -5,30 +5,20 @@
 import dummyCourses from '../data/dummyCourses.js';
 import dummyOpportunities from '../data/dummyOpportunities.js';
 import { getProfile } from './profileService.js';
-import { getRecommendations, getSkillGapAnalysis } from './careerService.js';
+import { getRecommendations } from './careerService.js';
 
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Returns a list of courses, prioritizing those that teach skills the student lacks.
  */
-export async function getCourseRecommendations() {
+export async function getCourseRecommendations(profileOverride = null, careerOverride = null) {
   await delay(600);
 
-  const profile = await getProfile();
+  const profile = profileOverride || await getProfile();
   const profileSkills = profile.skills || [];
-  
-  // Attempt to get recommended focus areas from their top career match
-  let focusSkills = [];
-  try {
-    const topCareers = await getRecommendations();
-    if (topCareers.length > 0) {
-      const topCareerGap = await getSkillGapAnalysis(topCareers[0].id);
-      focusSkills = topCareerGap.recommendedFocus.map(s => s.toLowerCase());
-    }
-  } catch (error) {
-    console.error("Failed to fetch focus skills for course ranking", error);
-  }
+  const topCareers = careerOverride || (profileOverride ? [] : await getRecommendations());
+  const focusSkills = topCareers[0]?.requiredSkills?.map((skill) => skill.name.toLowerCase()) || [];
 
   // Score each course
   const scoredCourses = dummyCourses.map(course => {
@@ -62,10 +52,10 @@ export async function getCourseRecommendations() {
 /**
  * Returns a list of jobs/internships ranked by how well the student's skills match the requirements.
  */
-export async function getOpportunityRecommendations() {
+export async function getOpportunityRecommendations(profileOverride = null) {
   await delay(600);
 
-  const profile = await getProfile();
+  const profile = profileOverride || await getProfile();
   const profileSkills = profile.skills || [];
 
   const scoredOpps = dummyOpportunities.map(opp => {

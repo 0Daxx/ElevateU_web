@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Send, Bot, Check, AlertTriangle, FileText, Target, Briefcase, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Bot, Check, AlertTriangle, FileText, Target } from 'lucide-react';
 import { getBotReply } from '../../services/chatbotService';
 
 const SUGGESTIONS = [
@@ -73,11 +73,10 @@ export default function ChatWidget() {
 
       setMessages(prev => [...prev, botMsg]);
     } catch (error) {
-      console.error(error);
       const errorMsg = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
-        text: "Sorry, something went wrong. Please try again."
+        text: error?.message || 'AI is temporarily unavailable. Please try again in a moment.'
       };
       setMessages(prev => [...prev, errorMsg]);
     } finally {

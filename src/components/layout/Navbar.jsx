@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
-import { Menu, LogOut } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Menu, ChevronDown, UserRound, Settings, MessageSquare, Shield, FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { useUserDataStore } from '../../store/userDataStore';
 import ThemeToggle from '../ui/ThemeToggle';
-import Button from '../ui/Button';
 import { useNavigate } from 'react-router-dom';
 // Vite requires static assets inside src/ to be imported as ES modules.
 // If logo.png doesn't exist yet, the onError fallback below renders the "EU" badge instead.
@@ -19,12 +19,63 @@ import logoSrc from '../../assets/logo.png';
 export default function Navbar({ onMenuToggle }) {
   const { user, isAuthenticated, logout } = useAuth();
   const [logoFailed, setLogoFailed] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+  const triggerRef = useRef(null);
+  const menuItemsRef = useRef([]);
+  const profile = useUserDataStore((state) => state.profile);
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    setMenuOpen(false);
     logout();
     navigate('/login');
   };
+
+  const displayName = profile?.personal?.name || user?.name || 'Student';
+  const displayEmail = user?.email || profile?.personal?.email || '';
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const onPointerDown = (event) => {
+      if (!menuRef.current?.contains(event.target)) setMenuOpen(false);
+    };
+    const onKeyDown = (event) => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false);
+        triggerRef.current?.focus();
+      }
+    };
+    document.addEventListener('pointerdown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    menuItemsRef.current[0]?.focus();
+    return () => {
+      document.removeEventListener('pointerdown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [menuOpen]);
+
+  const handleMenuKeyDown = (event) => {
+    const items = menuItemsRef.current.filter(Boolean);
+    const index = items.indexOf(document.activeElement);
+    let next = null;
+    if (event.key === 'ArrowDown') next = (index + 1) % items.length;
+    if (event.key === 'ArrowUp') next = (index - 1 + items.length) % items.length;
+    if (event.key === 'Home') next = 0;
+    if (event.key === 'End') next = items.length - 1;
+    if (next !== null) {
+      event.preventDefault();
+      items[next]?.focus();
+    }
+  };
+
+  const menuLinks = [
+    { label: 'Profile', to: '/profile', icon: UserRound },
+    { label: 'Settings', to: '/settings', icon: Settings },
+    { label: 'Send Feedback', to: '/feedback', icon: MessageSquare },
+    { label: 'Privacy Policy', to: '/privacy', icon: Shield },
+    { label: 'Terms of Service', to: '/terms', icon: FileText },
+  ];
 
   return (
     <nav className="fixed top-0 left-0 right-0 h-16 bg-bg-surface border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 transition-colors duration-300">
@@ -65,33 +116,55 @@ export default function Navbar({ onMenuToggle }) {
         <ThemeToggle />
         
         {isAuthenticated && (
-          <div className="flex items-center gap-3 pl-3 border-l border-border transition-colors duration-300">
-            {/* User Avatar with Initials */}
-            <div
-              className="h-9 w-9 rounded-full bg-secondary/15 text-secondary border border-secondary/20 flex items-center justify-center font-bold text-xs select-none shadow-inner"
-              title={user?.name}
-            >
-              {user?.initials || 'AM'}
-            </div>
-
-            {/* Logout controls (Desktop vs Mobile buttons) */}
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:inline-flex gap-1.5"
-              onClick={handleLogout}
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              Sign Out
-            </Button>
-            
+          <div className="relative pl-3 border-l border-border transition-colors duration-300" ref={menuRef}>
             <button
-              onClick={handleLogout}
-              className="sm:hidden p-2 rounded-xl text-text-secondary hover:bg-bg-page hover:text-danger focus:outline-none transition-colors duration-200"
-              aria-label="Sign out"
+              ref={triggerRef}
+              type="button"
+              onClick={() => setMenuOpen((open) => !open)}
+              aria-haspopup="menu"
+              aria-expanded={menuOpen}
+              aria-label={`Account menu for ${displayName}`}
+              className="flex max-w-[min(58vw,15rem)] items-center gap-2 rounded-xl p-1.5 text-left hover:bg-bg-page focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
-              <LogOut className="h-5 w-5" />
+              <span className="h-9 w-9 rounded-full bg-secondary/15 text-secondary border border-secondary/20 flex items-center justify-center font-bold text-xs select-none shadow-inner shrink-0">
+                {user?.initials || displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U'}
+              </span>
+              <span className="hidden sm:block min-w-0 truncate text-sm font-semibold text-text-primary">{displayName}</span>
+              <ChevronDown className="h-4 w-4 shrink-0 text-text-secondary" />
             </button>
+
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-2rem))] overflow-hidden rounded-2xl border border-border bg-bg-surface shadow-xl z-[60]">
+                <div className="border-b border-border px-4 py-3">
+                  <p className="truncate text-sm font-bold text-text-primary">{displayName}</p>
+                  <p className="truncate text-xs text-text-secondary">{displayEmail}</p>
+                </div>
+                <div role="menu" aria-label="Account options" onKeyDown={handleMenuKeyDown} className="p-2">
+                  {menuLinks.map(({ label, to, icon: Icon }, index) => (
+                    <button
+                      key={to}
+                      type="button"
+                      role="menuitem"
+                      ref={(node) => { menuItemsRef.current[index] = node; }}
+                      onClick={() => { setMenuOpen(false); navigate(to); }}
+                      className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-text-secondary hover:bg-bg-page hover:text-text-primary focus:bg-bg-page focus:outline-none"
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />{label}
+                    </button>
+                  ))}
+                  <div className="my-1 border-t border-border" />
+                  <button
+                    type="button"
+                    role="menuitem"
+                    ref={(node) => { menuItemsRef.current[menuLinks.length] = node; }}
+                    onClick={handleLogout}
+                    className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold text-danger hover:bg-danger/10 focus:bg-danger/10 focus:outline-none"
+                  >
+                    <LogOut className="h-4 w-4 shrink-0" />Sign out
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

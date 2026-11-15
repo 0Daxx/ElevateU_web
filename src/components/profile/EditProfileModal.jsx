@@ -19,8 +19,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Plus, Trash2, GraduationCap, Briefcase, Zap, Heart, Target, User } from 'lucide-react';
 
-import { updateProfile } from '../../services/profileService';
-import { fetchAllRoadmaps } from '../../services/roadmapService';
+import { useUserDataStore } from '../../store/userDataStore';
 import Button from '../ui/Button';
 import Input from '../ui/Input';
 import Badge from '../ui/Badge';
@@ -174,6 +173,7 @@ function Spinner() {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function EditProfileModal({ profile, onClose, onSave }) {
+  const roadmaps = useUserDataStore((state) => state.roadmaps);
   // ── Local edit state — deep-cloned from prop so we never mutate parent ──
   const [editData, setEditData] = useState(() => {
     const cloned = JSON.parse(JSON.stringify(profile));
@@ -223,28 +223,8 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
 
   // ── Load roadmaps on mount for Career Goals dropdown alignment ─────────
   useEffect(() => {
-    fetchAllRoadmaps()
-      .then((data) => {
-        if (data && data.length > 0) {
-          setAvailableRoadmaps(data.map((r) => r.title));
-        } else {
-          setAvailableRoadmaps([
-            'Frontend Developer', 'Backend Developer', 'Data Scientist',
-            'Data Analyst', 'UI/UX Designer', 'Product Manager',
-            'Digital Marketer', 'DevOps Engineer', 'AI Engineer',
-            'Machine Learning', 'Cloud Computing', 'Database Design'
-          ]);
-        }
-      })
-      .catch(() => {
-        setAvailableRoadmaps([
-          'Frontend Developer', 'Backend Developer', 'Data Scientist',
-          'Data Analyst', 'UI/UX Designer', 'Product Manager',
-          'Digital Marketer', 'DevOps Engineer', 'AI Engineer',
-          'Machine Learning', 'Cloud Computing', 'Database Design'
-        ]);
-      });
-  }, []);
+    if (roadmaps?.length) setAvailableRoadmaps(roadmaps.map((roadmap) => roadmap.title));
+  }, [roadmaps]);
 
 
   // ─── Updaters: Personal ────────────────────────────────────────────────
@@ -413,15 +393,14 @@ export default function EditProfileModal({ profile, onClose, onSave }) {
       })
     };
 
-    const result = await updateProfile(preparedData);
-
-    setIsSaving(false);
-
-    if (result.success) {
-      onSave(result.profile);   // update parent state
+    try {
+      await onSave(preparedData);
       onClose();
-    } else {
+    } catch (error) {
+      console.error('Failed to save profile:', error);
       setSaveError('Failed to save. Please try again.');
+    } finally {
+      setIsSaving(false);
     }
   };
 

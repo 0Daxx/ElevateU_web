@@ -19,9 +19,11 @@ import { useUserDataStore } from '../store/userDataStore';
 export default function UserDataProvider({ children }) {
   const user            = useAuthStore((s) => s.user);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
+  const sessionReady    = useAuthStore((s) => s.sessionReady);
 
   const bootstrapping = useUserDataStore((s) => s.bootstrapping);
   const bootstrapped  = useUserDataStore((s) => s.bootstrapped);
+  const dataUserId    = useUserDataStore((s) => s.dataUserId);
   const fetchAll      = useUserDataStore((s) => s.fetchAll);
   const retrySlice    = useUserDataStore((s) => s.retrySlice);
   const clear         = useUserDataStore((s) => s.clear);
@@ -31,7 +33,10 @@ export default function UserDataProvider({ children }) {
   const bootstrappedForRef = useRef(null);
 
   useEffect(() => {
+    if (!sessionReady) return;
+
     if (isAuthenticated && user?.id && bootstrappedForRef.current !== user.id) {
+      clear();
       bootstrappedForRef.current = user.id;
       fetchAll(user.id);
     }
@@ -41,10 +46,10 @@ export default function UserDataProvider({ children }) {
       bootstrappedForRef.current = null;
       clear();
     }
-  }, [isAuthenticated, user?.id, fetchAll, clear]);
+  }, [isAuthenticated, sessionReady, user?.id, fetchAll, clear]);
 
   // Still bootstrapping → show branded loading screen
-  if (isAuthenticated && !bootstrapped) {
+  if (!sessionReady || (isAuthenticated && (bootstrapping || !bootstrapped || dataUserId !== user?.id))) {
     return <BootstrapLoader />;
   }
 
@@ -71,6 +76,11 @@ const SLICE_LABELS = {
   completedAssessmentIds:'Completed assessments',
   assessmentScores:      'Assessment scores',
   resumeHistory:         'Resume history',
+  roadmapDetails:        'Roadmap details',
+  userSubtopicProgress:  'Roadmap progress',
+  settings:              'Settings and preferences',
+  courseRecommendations: 'Course recommendations',
+  opportunityRecommendations: 'Job recommendations',
 };
 
 function SliceErrorBanners({ userId, retrySlice }) {

@@ -62,7 +62,7 @@ export async function fetchUserSelectedIds(userId) {
  * @param {string} userId
  * @param {string} roadmapId
  */
-export async function addRoadmapSelection(userId, roadmapId) {
+export async function addRoadmapSelection(userId, roadmapId, isActive = false) {
   if (!isUuid(userId)) {
     const key = `elevateu_roadmap_selections_${userId}`;
     try {
@@ -86,7 +86,7 @@ export async function addRoadmapSelection(userId, roadmapId) {
   const { error } = await supabase
     .from('user_roadmap_selections')
     .upsert(
-      { user_id: userId, roadmap_id: roadmapId, is_active: false },
+      { user_id: userId, roadmap_id: roadmapId, is_active: isActive },
       { onConflict: 'user_id,roadmap_id', ignoreDuplicates: true }
     );
 
@@ -133,6 +133,71 @@ export async function fetchUserRoadmaps(userId) {
 
   if (error) throw error;
   return data || [];
+}
+
+/** Fetch the topic/subtopic catalog for every roadmap the user selected. */
+export async function fetchUserRoadmapDetails(userId, selections) {
+  const selectedRows = selections || await fetchUserRoadmaps(userId);
+  const roadmapIds = [...new Set((selectedRows || []).map((row) => row.roadmap_id).filter(Boolean))];
+  if (roadmapIds.length === 0) return {};
+
+  const { data: topics, error: topicError } = await supabase
+    .from('roadmap_topics')
+    .select('id, roadmap_id, title, order_index')
+    .in('roadmap_id', roadmapIds)
+    .order('order_index');
+  if (topicError) throw topicError;
+
+  const topicIds = (topics || []).map((topic) => topic.id);
+  let subtopics = [];
+  if (topicIds.length > 0) {
+    const { data, error } = await supabase
+      .from('roadmap_subtopics')
+      .select('id, topic_id, title, resource_url, resource_type, order_index')
+      .in('topic_id', topicIds)
+      .order('order_index');
+    if (error) throw error;
+    subtopics = data || [];
+  }
+
+  const progress = await fetchUserSubtopicProgress(userId);
+  return Object.fromEntries(roadmapIds.map((roadmapId) => {
+    const selection = selectedRows.find((row) => row.roadmap_id === roadmapId);
+    const roadmap = selection?.roadmaps || {};
+    const roadmapTopics = (topics || []).filter((topic) => topic.roadmap_id === roadmapId);
+    const topicsWithSubtopics = roadmapTopics.map((topic) => ({
+      ...topic,
+      subtopics: subtopics.filter((subtopic) => subtopic.topic_id === topic.id).map((subtopic) => ({
+        ...subtopic,
+        status: progress[subtopic.id] || 'not_started',
+      })),
+    }));
+    return [roadmapId, {
+      selection_id: selection?.id || roadmapId,
+      roadmap: { id: roadmapId, title: roadmap.title || '', category: roadmap.category || '' },
+      topics: topicsWithSubtopics,
+    }];
+  }));
+}
+
+/** Fetch only this user's lightweight subtopic completion metadata. */
+export async function fetchUserSubtopicProgress(userId) {
+  if (!isUuid(userId)) {
+    try {
+      return JSON.parse(localStorage.getItem(`elevateu_subtopic_progress_${userId}`) || '{}');
+    } catch (error) {
+      console.warn('Failed to read local roadmap progress:', error);
+      return {};
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('user_subtopic_progress')
+    .select('subtopic_id, status, completed_at')
+    .eq('user_id', userId);
+
+  if (error) throw error;
+  return Object.fromEntries((data || []).map((row) => [row.subtopic_id, row.status]));
 }
 
 /**
@@ -424,26 +489,27 @@ export async function computeRoadmapProgress(userId, roadmapId) {
  * Calculates overall progress of the current logged-in user's active roadmap.
  * @returns {Promise<number>} Progress percentage (0-100)
  */
-export async function getOverallProgress() {
+export async function getOverallProgress(userIdOverride) {
   const user = useAuthStore.getState().user;
-  if (!user) return 0;
+  const userId = userIdOverride || user?.id;
+  if (!userId) return 0;
 
-  if (!isUuid(user.id)) {
-    const activeRoadmapId = localStorage.getItem(`elevateu_active_roadmap_${user.id}`);
+  if (!isUuid(userId)) {
+    const activeRoadmapId = localStorage.getItem(`elevateu_active_roadmap_${userId}`);
     if (!activeRoadmapId) return 0;
-    return computeRoadmapProgress(user.id, activeRoadmapId);
+    return computeRoadmapProgress(userId, activeRoadmapId);
   }
 
   // Find active selection in Supabase
   const { data: selRows, error: selErr } = await supabase
     .from('user_roadmap_selections')
     .select('roadmap_id')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .eq('is_active', true)
     .limit(1);
 
   if (selErr || !selRows || selRows.length === 0) return 0;
   
-  return computeRoadmapProgress(user.id, selRows[0].roadmap_id);
+  return computeRoadmapProgress(userId, selRows[0].roadmap_id);
 }
 

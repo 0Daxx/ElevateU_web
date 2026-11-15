@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { saveUserSession, loadUserSession, clearUserSession } from '../utils/authStorage';
 import { logoutSupabase } from '../services/authService';
+import { memoryManager } from '../services/ai/memoryManager';
 
 /**
  * Module-level synchronous store initialization:
@@ -12,6 +13,7 @@ const initialUser = loadUserSession();
 export const useAuthStore = create((set) => ({
   user: initialUser || null,
   isAuthenticated: !!initialUser,
+  sessionReady: false,
 
   /**
    * Login action: parses user details (including Supabase OAuth metadata),
@@ -51,6 +53,19 @@ export const useAuthStore = create((set) => ({
     set({ user: enrichedUser, isAuthenticated: true });
   },
 
+  /** Reconcile persisted auth state with the session Supabase reports. */
+  syncSupabaseSession: (session) => {
+    if (session?.user) {
+      useAuthStore.getState().login(session.user);
+      set({ sessionReady: true });
+      return;
+    }
+    clearUserSession();
+    memoryManager.clearAll();
+    import('./userDataStore').then(({ useUserDataStore }) => useUserDataStore.getState().clear());
+    set({ user: null, isAuthenticated: false, sessionReady: true });
+  },
+
   /**
    * Logout action: clears state, removes session from authStorage,
    * terminates Supabase auth session, and wipes all user data from
@@ -61,9 +76,10 @@ export const useAuthStore = create((set) => ({
     import('./userDataStore').then(({ useUserDataStore }) => {
       useUserDataStore.getState().clear();
     });
+    memoryManager.clearAll();
     logoutSupabase();
     clearUserSession();
-    set({ user: null, isAuthenticated: false });
+    set({ user: null, isAuthenticated: false, sessionReady: true });
   },
 
   /**
