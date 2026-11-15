@@ -8,9 +8,10 @@ import {
 import { Target, CheckCircle2, AlertCircle, ArrowRight, BookOpen, Map } from 'lucide-react';
 
 import { getSkillGapAnalysis } from '../services/careerService';
-import { fetchUserRoadmaps, setActiveRoadmap } from '../services/roadmapService';
+import { setActiveRoadmap } from '../services/roadmapService';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -108,9 +109,12 @@ export default function SkillGapAnalysis() {
     surface:   'var(--color-bg-surface)',
   }), [theme]);
 
-  // ── User's roadmap selections ─────────────────────────────────────────────
-  const [userRoadmaps, setUserRoadmaps] = useState([]);
-  const [loadingRoadmaps, setLoadingRoadmaps] = useState(true);
+  // ── User's roadmap selections — read from pre-fetched global store ───────
+  const storeUserRoadmaps = useUserDataStore((s) => s.userRoadmaps);
+  const storeLoading      = useUserDataStore((s) => s.userRoadmapsLoading);
+
+  const [userRoadmaps, setUserRoadmaps]           = useState(storeUserRoadmaps ?? []);
+  const [loadingRoadmaps, setLoadingRoadmaps]     = useState(!storeUserRoadmaps && storeLoading);
 
   // The currently selected selection row id (not roadmap_id)
   const [selectedSelectionId, setSelectedSelectionId] = useState(null);
@@ -121,9 +125,21 @@ export default function SkillGapAnalysis() {
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const [errorAnalysis, setErrorAnalysis] = useState(false);
 
-  // 1. Load user's roadmaps
+  // 1. Load user's roadmaps — use pre-fetched store data if available, otherwise fetch
   const loadUserRoadmaps = useCallback(async () => {
     if (!user) return;
+    // If the store already has data, use it immediately (no spinner)
+    if (storeUserRoadmaps && storeUserRoadmaps.length >= 0 && !storeLoading) {
+      setUserRoadmaps(storeUserRoadmaps);
+      setLoadingRoadmaps(false);
+      const active = storeUserRoadmaps.find((r) => r.is_active);
+      if (active) {
+        setSelectedSelectionId(active.id);
+      } else if (storeUserRoadmaps.length > 0) {
+        setSelectedSelectionId(storeUserRoadmaps[0].id);
+      }
+      return;
+    }
     setLoadingRoadmaps(true);
     try {
       const rows = await fetchUserRoadmaps(user.id);
@@ -141,7 +157,7 @@ export default function SkillGapAnalysis() {
     } finally {
       setLoadingRoadmaps(false);
     }
-  }, [user]);
+  }, [user, storeUserRoadmaps, storeLoading]);
 
   useEffect(() => { loadUserRoadmaps(); }, [loadUserRoadmaps]);
 

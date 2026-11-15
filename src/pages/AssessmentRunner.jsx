@@ -3,12 +3,14 @@ import SEO from '../components/SEO';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Clock, ArrowRight, ArrowLeft } from 'lucide-react';
 import { getAssessmentById, submitAssessment } from '../services/assessmentService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 export default function AssessmentRunner() {
   const { assessmentId } = useParams();
   const navigate = useNavigate();
+  const markAssessmentCompleted = useUserDataStore((s) => s.markAssessmentCompleted);
   
   const [assessment, setAssessment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -73,6 +75,10 @@ export default function AssessmentRunner() {
       } catch (err) {
         console.warn('Failed to clear assessment progress from sessionStorage:', err);
       }
+
+      // Update the global store so other pages (Skill Assessment list, Dashboard)
+      // reflect the completion without needing a full re-fetch.
+      markAssessmentCompleted(assessmentId, result.score);
 
       // Navigate to results page with result data in state
       navigate(`/assessment/${assessmentId}/results`, { state: { result, assessment } });

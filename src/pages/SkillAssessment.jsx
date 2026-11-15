@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SEO from '../components/SEO';
 import { useNavigate } from 'react-router-dom';
 import { Clock, HelpCircle, CheckCircle2 } from 'lucide-react';
-import { getAssessments } from '../services/assessmentService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -12,26 +12,25 @@ import ErrorState from '../components/ui/ErrorState';
 
 export default function SkillAssessment() {
   const navigate = useNavigate();
-  const [assessments, setAssessments] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
   const [filter, setFilter] = useState('All');
 
-  const fetchAssessments = () => {
-    setLoading(true);
-    setError(false);
-    getAssessments().then((data) => {
-      setAssessments(data);
-      setLoading(false);
-    }).catch(() => {
-      setError(true);
-      setLoading(false);
-    });
-  };
+  // ── Read from pre-fetched global store ───────────────────────────────────
+  const storeAssessments  = useUserDataStore((s) => s.assessments) ?? [];
+  const completedIds      = useUserDataStore((s) => s.completedAssessmentIds) ?? new Set();
+  const loading           = useUserDataStore((s) => s.assessmentsLoading);
+  const error             = useUserDataStore((s) => s.assessmentsError);
+  const retrySlice        = useUserDataStore((s) => s.retrySlice);
 
-  useEffect(() => {
-    fetchAssessments();
-  }, []);
+  const handleRetry = () => retrySlice('assessments');
+
+  // Merge live completedIds into assessments list (store bootstrap may have
+  // fetched assessments before the user finished one in this session).
+  const assessments = storeAssessments.map((a) => ({
+    ...a,
+    completed: completedIds instanceof Set
+      ? completedIds.has(a.id)
+      : (completedIds || []).includes(a.id),
+  }));
 
   const filteredAssessments = assessments.filter((a) =>
     filter === 'All' ? true : a.category === filter
@@ -67,6 +66,7 @@ export default function SkillAssessment() {
       </div>
 
       {/* Assessment Grid */}
+      {error && <ErrorState onRetry={handleRetry} />}
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (

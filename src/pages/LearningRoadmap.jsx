@@ -13,10 +13,8 @@ import Skeleton from '../components/ui/Skeleton';
 import EmptyState from '../components/ui/EmptyState';
 import ErrorState from '../components/ui/ErrorState';
 import { useAuth } from '../hooks/useAuth';
+import { useUserDataStore } from '../store/userDataStore';
 import {
-  fetchAllRoadmaps,
-  fetchUserSelectedIds,
-  addRoadmapSelection,
   fetchActiveRoadmapDetail,
   toggleSubtopicProgress,
   computeRoadmapProgress,
@@ -74,38 +72,27 @@ function TopicIcon({ allDone, anyDone }) {
 // ─── Section 1: Browse Roadmaps Grid ─────────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════════════
 function BrowseSection({ userId, onAdded }) {
-  const [roadmaps, setRoadmaps] = useState([]);
-  const [selectedIds, setSelectedIds] = useState(new Set());
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  // ── Read from pre-fetched global store ─────────────────────────────────────
+  const storeRoadmaps     = useUserDataStore((s) => s.roadmaps);
+  const storeSelectedIds  = useUserDataStore((s) => s.selectedRoadmapIds);
+  const roadmapsLoading   = useUserDataStore((s) => s.roadmapsLoading);
+  const roadmapsError     = useUserDataStore((s) => s.roadmapsError);
+  const retrySlice        = useUserDataStore((s) => s.retrySlice);
+  const addSelection      = useUserDataStore((s) => s.addRoadmapSelection);
+
+  const roadmaps    = storeRoadmaps   ?? [];
+  // selectedRoadmapIds may be a Set or array; normalise to Set
+  const selectedIds = storeSelectedIds instanceof Set
+    ? storeSelectedIds
+    : new Set(storeSelectedIds ?? []);
+
   const [addingId, setAddingId] = useState(null);
-
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(false);
-    try {
-      const [all, sel] = await Promise.all([
-        fetchAllRoadmaps(),
-        fetchUserSelectedIds(userId),
-      ]);
-      setRoadmaps(all);
-      setSelectedIds(sel);
-    } catch (err) {
-      console.error(err);
-      setError(true);
-    } finally {
-      setLoading(false);
-    }
-  }, [userId]);
-
-  useEffect(() => { load(); }, [load]);
 
   const handleAdd = async (roadmapId) => {
     if (addingId) return;
     setAddingId(roadmapId);
     try {
-      await addRoadmapSelection(userId, roadmapId);
-      setSelectedIds((prev) => new Set([...prev, roadmapId]));
+      await addSelection(userId, roadmapId);
       onAdded?.();
     } catch (err) {
       console.error(err);
@@ -114,7 +101,7 @@ function BrowseSection({ userId, onAdded }) {
     }
   };
 
-  if (loading) {
+  if (roadmapsLoading || !storeRoadmaps) {
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3, 4, 5].map((i) => (
@@ -124,7 +111,7 @@ function BrowseSection({ userId, onAdded }) {
     );
   }
 
-  if (error) return <ErrorState onRetry={load} />;
+  if (roadmapsError) return <ErrorState onRetry={() => retrySlice('roadmaps', userId)} />;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">

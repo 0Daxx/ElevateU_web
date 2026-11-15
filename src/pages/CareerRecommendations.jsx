@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import SEO from '../components/SEO';
 import { useNavigate } from 'react-router-dom';
 import { TrendingUp, TrendingDown, Minus, Briefcase, IndianRupee } from 'lucide-react';
-import { getRecommendations } from '../services/careerService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Skeleton from '../components/ui/Skeleton';
+import ErrorState from '../components/ui/ErrorState';
 
 /**
  * Small SVG circular progress ring for the match percentage.
@@ -59,15 +60,14 @@ function GrowthIcon({ growth }) {
 
 export default function CareerRecommendations() {
   const navigate = useNavigate();
-  const [careers, setCareers] = useState([]);
-  const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    getRecommendations().then((data) => {
-      setCareers(data);
-      setLoading(false);
-    });
-  }, []);
+  // ── Read from pre-fetched global store ───────────────────────────────────
+  const careers        = useUserDataStore((s) => s.careerRecommendations) ?? [];
+  const loading        = useUserDataStore((s) => s.careerRecommendationsLoading);
+  const error          = useUserDataStore((s) => s.careerRecommendationsError);
+  const retrySlice     = useUserDataStore((s) => s.retrySlice);
+
+  const handleRetry = () => retrySlice('careerRecommendations');
 
   return (
     <div className="space-y-6 pt-4">
@@ -84,7 +84,9 @@ export default function CareerRecommendations() {
       </div>
 
       {/* Grid */}
-      {loading ? (
+      {error ? (
+        <ErrorState onRetry={handleRetry} />
+      ) : loading || careers.length === 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map(i => (
             <Skeleton key={i} className="h-48" />

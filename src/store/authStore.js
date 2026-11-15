@@ -53,9 +53,14 @@ export const useAuthStore = create((set) => ({
 
   /**
    * Logout action: clears state, removes session from authStorage,
-   * and terminates Supabase auth session.
+   * terminates Supabase auth session, and wipes all user data from
+   * the data store so no stale data leaks to the next user.
    */
   logout: () => {
+    // Import lazily to avoid circular dep at module evaluation time
+    import('./userDataStore').then(({ useUserDataStore }) => {
+      useUserDataStore.getState().clear();
+    });
     logoutSupabase();
     clearUserSession();
     set({ user: null, isAuthenticated: false });

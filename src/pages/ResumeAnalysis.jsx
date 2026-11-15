@@ -5,6 +5,7 @@ import {
   Info, AlertTriangle, RefreshCcw 
 } from 'lucide-react';
 import { analyzeResume } from '../services/resumeService';
+import { useUserDataStore } from '../store/userDataStore';
 import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
@@ -80,6 +81,7 @@ function ProgressBar({ label, value }) {
 
 export default function ResumeAnalysis() {
   const fileInputRef = useRef(null);
+  const addResumeAnalysis = useUserDataStore((s) => s.addResumeAnalysis);
   
   // States: 'idle' -> 'uploading' -> 'analyzing' -> 'results'
   const [status, setStatus] = useState('idle');
@@ -168,6 +170,9 @@ export default function ResumeAnalysis() {
       clearInterval(interval);
       setProgress(100);
       
+      // Update the global store so the resume history slice stays current
+      addResumeAnalysis(data);
+
       // Give the progress bar 300ms to hit 100% visually before switching views
       setTimeout(() => {
         setReport(data);

@@ -11,14 +11,15 @@
  * "Edit Profile" opens EditProfileModal; on save the view re-renders instantly.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import SEO from '../components/SEO';
 import {
   GraduationCap, Zap, Heart, Target, Briefcase,
   MapPin, Mail, Phone, Pencil, CalendarDays,
 } from 'lucide-react';
 
-import { getProfile } from '../services/profileService';
+import { useUserDataStore } from '../store/userDataStore';
+import { useAuth } from '../hooks/useAuth';
 import Card from '../components/ui/Card';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
@@ -88,40 +89,36 @@ function SectionTitle({ icon: Icon, children, colorClass }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function StudentProfile() {
-  // ── Data state ──────────────────────────────────────────────────────────
-  const [profile,     setProfile]     = useState(null);
-  const [loading,     setLoading]     = useState(true);
-  const [error,       setError]       = useState(false);
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  const { user }         = useAuth();
+  const storeProfile     = useUserDataStore((s) => s.profile);
+  const profileLoading   = useUserDataStore((s) => s.profileLoading);
+  const profileError     = useUserDataStore((s) => s.profileError);
+  const retrySlice       = useUserDataStore((s) => s.retrySlice);
+  const updateProfileOpt = useUserDataStore((s) => s.updateProfileOpt);
 
-  const fetchProfile = () => {
-    setLoading(true);
-    setError(false);
-    getProfile().then((data) => {
-      setProfile(data);
-      setLoading(false);
-    }).catch(() => {
-      setError(true);
-      setLoading(false);
-    });
+  // Local copy for optimistic edit
+  const [localProfile, setLocalProfile] = useState(null);
+  const [isModalOpen, setIsModalOpen]   = useState(false);
+
+  // Use the local copy while editing; fall back to store data
+  const profile = localProfile ?? storeProfile;
+
+  const handleRetry = () => retrySlice('profile', user?.id);
+
+  // ── After save: optimistically update store AND local state ──────────────
+  const handleSave = async (updatedProfile) => {
+    setLocalProfile(updatedProfile);
+    setIsModalOpen(false);
+    if (user?.id) {
+      await updateProfileOpt(user.id, updatedProfile).catch(() => {});
+    }
   };
 
-  // ── Fetch on mount ──────────────────────────────────────────────────────
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  // ── After save: update local state (no refetch needed — service returns merged object) ──
-  const handleSave = (updatedProfile) => {
-    setProfile(updatedProfile);
-  };
-
-  // ── Loading guard ────────────────────────────────────────────────────────
-  if (loading) {
+  if (profileLoading || !profile) {
     return <ProfileSkeleton />;
   }
-  if (error) {
-    return <ErrorState onRetry={fetchProfile} />;
+  if (profileError) {
+    return <ErrorState onRetry={handleRetry} />;
   }
 
   const { personal, education, skills, interests, careerGoals, experience } = profile;
@@ -322,7 +319,6 @@ export default function StudentProfile() {
           onSave={handleSave}
         />
       )}
-
     </div>
   );
 }

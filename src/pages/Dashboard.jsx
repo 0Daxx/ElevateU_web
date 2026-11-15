@@ -31,9 +31,7 @@ import {
 
 import { useAuth }  from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { getDashboardData } from '../services/dashboardService';
-import { getOverallProgress } from '../services/roadmapService';
-import { getProfile } from '../services/profileService';
+import { useUserDataStore } from '../store/userDataStore';
 import EditProfileModal from '../components/profile/EditProfileModal';
 import Card   from '../components/ui/Card';
 import Button from '../components/ui/Button';
@@ -259,7 +257,16 @@ const BAR_PALETTE = ['var(--color-secondary)', 'var(--color-accent)', 'var(--col
 export default function Dashboard() {
   const { user }   = useAuth();
   const navigate   = useNavigate();
-  const { theme }  = useTheme(); // Consume theme context
+  const { theme }  = useTheme();
+
+  // ── Read pre-fetched data from the global store ──────────────────────────
+  const storeData        = useUserDataStore((s) => s.dashboardData);
+  const storeProfile     = useUserDataStore((s) => s.profile);
+  const storeProgress    = useUserDataStore((s) => s.overallProgress);
+  const dataLoading      = useUserDataStore((s) => s.dashboardDataLoading);
+  const dataError        = useUserDataStore((s) => s.dashboardDataError);
+  const retrySlice       = useUserDataStore((s) => s.retrySlice);
+  const updateProfileOpt = useUserDataStore((s) => s.updateProfileOpt);
 
   // Memoize the chart color variables configuration so it is only recalculated
   // when the theme toggles (light <-> dark), preventing unnecessary re-renders.
@@ -279,41 +286,23 @@ export default function Dashboard() {
     };
   }, [theme]);
 
-  const [data,    setData]    = useState(null);
-  const [roadmapProgress, setRoadmapProgress] = useState(0);
-  const [profile, setProfile] = useState(null);
   const [isProfileSetupOpen, setIsProfileSetupOpen] = useState(false);
   const [showSetupPrompt, setShowSetupPrompt] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [error,   setError]   = useState(false);
 
-  const fetchDashboard = () => {
-    setLoading(true);
-    setError(false);
-    Promise.all([
-      getDashboardData(),
-      getOverallProgress(),
-      getProfile().catch(() => null)
-    ]).then(([d, progress, prof]) => {
-      setData(d);
-      setRoadmapProgress(progress);
-      setProfile(prof);
-      setLoading(false);
+  // Open the profile setup modal once, the first time we have a profile that
+  // isn't completed yet (fires only once per session via showSetupPrompt guard).
+  useEffect(() => {
+    if (storeProfile && storeProfile.isCompleted === false && showSetupPrompt) {
+      setIsProfileSetupOpen(true);
+    }
+  }, [storeProfile, showSetupPrompt]);
 
-      if (prof && prof.isCompleted === false && showSetupPrompt) {
-        setIsProfileSetupOpen(true);
-      }
-    }).catch(() => {
-      setError(true);
-      setLoading(false);
-    });
-  };
-
-  const handleProfileSave = (updatedProfile) => {
-    setProfile(updatedProfile);
+  const handleProfileSave = async (updatedProfile) => {
     setIsProfileSetupOpen(false);
     setShowSetupPrompt(false);
-    fetchDashboard();
+    if (user?.id) {
+      await updateProfileOpt(user.id, updatedProfile).catch(() => {});
+    }
   };
 
   const handleProfileClose = () => {
@@ -321,13 +310,14 @@ export default function Dashboard() {
     setShowSetupPrompt(false);
   };
 
-  // Fetch dashboard data on mount
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
+  const handleRetry = () => retrySlice('dashboardData', user?.id);
 
-  if (loading) return <DashboardSkeleton />;
-  if (error) return <ErrorState onRetry={fetchDashboard} />;
+  if (dataLoading || !storeData) return <DashboardSkeleton />;
+  if (dataError) return <ErrorState onRetry={handleRetry} />;
+
+  const data           = storeData;
+  const profile        = storeProfile;
+  const roadmapProgress = storeProgress ?? 0;
 
   const {
     careerReadinessScore,
@@ -338,6 +328,8 @@ export default function Dashboard() {
     skillBreakdown,
     recentActivity,
   } = data;
+
+  // roadmapProgress is already declared from the store above
 
   // Greeting salutation based on time of day
   const hour = new Date().getHours();
