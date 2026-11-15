@@ -94,11 +94,6 @@ let profileStore = loadProfileStore();
 export async function getProfile(userId) {
   await delay(500);
 
-  // Simulate a 5% random failure rate for QA testing Error States
-  if (Math.random() < 0.05) {
-    throw new Error('Failed to fetch profile data. Network error.');
-  }
-
   // Refresh profileStore from the current user's local cache.
   profileStore = loadProfileStore();
 

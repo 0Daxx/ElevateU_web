@@ -4,6 +4,9 @@ import Navbar from './Navbar';
 import Sidebar from './Sidebar';
 import ChatWidget from '../chatbot/ChatWidget';
 import ErrorBoundary from '../ErrorBoundary';
+import { UserDataErrorNotice } from '../UserDataProvider';
+import { useAuth } from '../../hooks/useAuth';
+import { useUserDataStore } from '../../store/userDataStore';
 import { usePrefetchRoutes } from '../../hooks/usePrefetchRoutes';
 import { routeImporters } from '../../routes/routePrefetchers';
 
@@ -15,6 +18,8 @@ import { routeImporters } from '../../routes/routePrefetchers';
 export default function DashboardLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const location = useLocation();
+  const { user } = useAuth();
+  const retrySlice = useUserDataStore((state) => state.retrySlice);
 
   // Silently pre-download all route bundles during browser idle time
   // so that switching tabs feels instant after the first visit.
@@ -41,6 +46,7 @@ export default function DashboardLayout() {
         {/* Content area: Offset on desktop by the sidebar width (w-64) */}
         <div className="flex-1 flex flex-col md:pl-64 transition-all duration-300">
           <main className="flex-1 p-6 sm:p-8 max-w-7xl w-full mx-auto relative">
+            <UserDataErrorNotice userId={user?.id} retrySlice={retrySlice} />
             <div key={location.pathname} className="animate-page">
               <ErrorBoundary>
                 <Outlet />

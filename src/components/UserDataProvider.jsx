@@ -25,7 +25,6 @@ export default function UserDataProvider({ children }) {
   const bootstrapped  = useUserDataStore((s) => s.bootstrapped);
   const dataUserId    = useUserDataStore((s) => s.dataUserId);
   const fetchAll      = useUserDataStore((s) => s.fetchAll);
-  const retrySlice    = useUserDataStore((s) => s.retrySlice);
   const clear         = useUserDataStore((s) => s.clear);
 
   // Track the user id we already bootstrapped for so we don't re-fetch
@@ -55,8 +54,6 @@ export default function UserDataProvider({ children }) {
 
   return (
     <>
-      {/* Partial-failure retry banners — rendered above page content */}
-      {bootstrapped && <SliceErrorBanners userId={user?.id} retrySlice={retrySlice} />}
       {children}
     </>
   );
@@ -83,7 +80,7 @@ const SLICE_LABELS = {
   opportunityRecommendations: 'Job recommendations',
 };
 
-function SliceErrorBanners({ userId, retrySlice }) {
+export function UserDataErrorNotice({ userId, retrySlice }) {
   const store = useUserDataStore();
 
   const failedSlices = Object.keys(SLICE_LABELS).filter(
@@ -93,27 +90,41 @@ function SliceErrorBanners({ userId, retrySlice }) {
   if (failedSlices.length === 0) return null;
 
   return (
-    <div className="space-y-2 mb-4">
-      {failedSlices.map((key) => (
-        <div
-          key={key}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl border border-warning/40 bg-warning/10 text-sm"
-        >
-          <span className="text-warning font-semibold shrink-0">⚠</span>
-          <span className="flex-1 text-text-primary">
-            Failed to load <strong>{SLICE_LABELS[key]}</strong>.{' '}
-            <span className="text-text-secondary text-xs">{store[`${key}Error`]}</span>
-          </span>
-          <button
-            onClick={() => retrySlice(key, userId)}
-            disabled={store[`${key}Loading`]}
-            className="shrink-0 text-xs font-bold text-warning hover:underline disabled:opacity-50"
-          >
-            {store[`${key}Loading`] ? 'Retrying…' : 'Retry'}
-          </button>
+    <aside className="mb-6 rounded-2xl border border-warning/35 bg-warning/10 p-4 text-sm text-text-primary" role="status" aria-live="polite">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-warning" aria-hidden="true">⚠</span>
+          <span className="font-semibold">Some workspace data needs attention</span>
+          <span className="text-text-secondary">({failedSlices.length})</span>
         </div>
-      ))}
-    </div>
+        <details className="group">
+          <summary className="cursor-pointer font-semibold text-warning hover:underline">Review and retry</summary>
+          <ul className="mt-3 space-y-2">
+            {failedSlices.map((key) => {
+              const message = String(store[`${key}Error`] || 'Please retry this section.');
+              const missingTable = /schema cache|does not exist|could not find the table/i.test(message);
+              const friendlyMessage = missingTable && key === 'profile'
+                ? 'Profile storage is not set up yet. Run the profile migration in Supabase, then retry.'
+                : missingTable && key === 'resumeHistory'
+                  ? 'Resume history is not set up yet. Run the resume analysis migration in Supabase, then retry.'
+                  : message;
+              return (
+                <li key={key} className="flex flex-wrap items-center justify-between gap-3 rounded-xl bg-bg-surface/70 px-3 py-2">
+                  <span><strong>{SLICE_LABELS[key] || key}:</strong> <span className="text-text-secondary">{friendlyMessage}</span></span>
+                  <button
+                    onClick={() => retrySlice(key, userId)}
+                    disabled={store[`${key}Loading`]}
+                    className="shrink-0 font-bold text-warning hover:underline disabled:opacity-50"
+                  >
+                    {store[`${key}Loading`] ? 'Retrying…' : 'Retry'}
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </details>
+      </div>
+    </aside>
   );
 }
 

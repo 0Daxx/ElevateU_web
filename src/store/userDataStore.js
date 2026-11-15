@@ -110,11 +110,20 @@ export const useUserDataStore = create((set, get) => ({
     const base = Object.fromEntries(entries.map(([key], index) => [key, values[index]]));
 
     const profile = base.profile;
-    const careerRecommendations = await fetchSlice('careerRecommendations', () => buildCareers(profile));
-    const [courseRecommendations, opportunityRecommendations] = await Promise.all([
-      fetchSlice('courseRecommendations', () => profile ? getCourseRecommendations(profile, careerRecommendations || []) : Promise.reject(new Error('Profile data is unavailable. Retry the profile load first.'))),
-      fetchSlice('opportunityRecommendations', () => profile ? getOpportunityRecommendations(profile) : Promise.reject(new Error('Profile data is unavailable. Retry the profile load first.'))),
-    ]);
+    let careerRecommendations = [];
+    let courseRecommendations = [];
+    let opportunityRecommendations = [];
+    if (profile) {
+      careerRecommendations = await fetchSlice('careerRecommendations', () => buildCareers(profile)) || [];
+      [courseRecommendations, opportunityRecommendations] = await Promise.all([
+        fetchSlice('courseRecommendations', () => getCourseRecommendations(profile, careerRecommendations)),
+        fetchSlice('opportunityRecommendations', () => getOpportunityRecommendations(profile)),
+      ]);
+    } else {
+      set({ careerRecommendationsLoading: false, careerRecommendationsError: null, careerRecommendations: [] });
+      set({ courseRecommendationsLoading: false, courseRecommendationsError: null, courseRecommendations: [] });
+      set({ opportunityRecommendationsLoading: false, opportunityRecommendationsError: null, opportunityRecommendations: [] });
+    }
 
     const activeSelection = (base.userRoadmaps || []).find((row) => row.is_active);
     const activeRoadmap = base.roadmapDetails?.[activeSelection?.roadmap_id] || null;
