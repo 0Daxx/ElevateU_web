@@ -78,7 +78,7 @@ export default function Navbar({ onMenuToggle }) {
   ];
 
   return (
-    <nav className="fixed top-0 left-0 right-0 h-16 bg-bg-surface border-b border-border flex items-center justify-between px-4 sm:px-6 z-40 transition-colors duration-300">
+    <nav className="fixed top-0 left-0 right-0 h-16 bg-header-bg/95 backdrop-blur-xl border-b border-border/80 shadow-[0_3px_16px_rgba(38,59,128,0.035)] flex items-center justify-between px-4 sm:px-6 z-40 transition-colors duration-300">
       
       {/* Brand logo & mobile menu triggers */}
       <div className="flex items-center gap-3">
@@ -124,7 +124,7 @@ export default function Navbar({ onMenuToggle }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label={`Account menu for ${displayName}`}
-              className="flex max-w-[min(58vw,15rem)] items-center gap-2 rounded-xl p-1.5 text-left hover:bg-bg-page focus:outline-none focus:ring-2 focus:ring-accent/50"
+              className="flex max-w-[min(58vw,15rem)] items-center gap-2 rounded-2xl p-1.5 text-left hover:bg-accent-soft/70 focus:outline-none focus:ring-2 focus:ring-accent/50"
             >
               <span className="h-9 w-9 rounded-full bg-secondary/15 text-secondary border border-secondary/20 flex items-center justify-center font-bold text-xs select-none shadow-inner shrink-0">
                 {user?.initials || displayName.split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase() || 'U'}

@@ -34,7 +34,7 @@ export default function MarketingPageLayout({ title, subtitle, children }) {
       <main className="flex-1 pt-16 flex flex-col">
         {/* Standard Header Band */}
         {(title || subtitle) && (
-          <div className="bg-bg-page border-b border-border py-16 px-6 sm:px-10 text-center">
+          <div className="bg-gradient-to-b from-accent-soft/65 to-bg-page border-b border-border/80 py-16 px-6 sm:px-10 text-center">
             <div className="max-w-4xl mx-auto">
               {title && (
                 <h1 className="text-4xl sm:text-5xl font-black text-text-primary tracking-tight mb-4">

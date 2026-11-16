@@ -72,14 +72,14 @@ export default function HeroSection() {
   };
 
   return (
-    <section className="relative flex flex-col lg:flex-row items-center justify-between px-6 sm:px-10 py-20 lg:py-32 max-w-7xl mx-auto overflow-hidden min-h-[calc(100vh-80px)] bg-bg-page">
+    <section className="relative flex w-full min-w-0 flex-col lg:flex-row items-center justify-between px-6 sm:px-10 py-16 sm:py-20 lg:py-32 max-w-7xl mx-auto overflow-hidden min-h-[calc(100vh-80px)] bg-bg-page">
       {/* Background Gradients (Decorative) */}
       <div className="absolute top-0 left-0 w-96 h-96 bg-primary/10 rounded-full blur-3xl pointer-events-none -z-10" />
       <div className="absolute bottom-0 right-0 w-96 h-96 bg-secondary/10 rounded-full blur-3xl pointer-events-none -z-10" />
 
       {/* Left Column: Text Content */}
       <motion.div 
-        className="lg:w-1/2 flex flex-col items-start text-left z-10 w-full mb-20 lg:mb-0"
+        className="lg:w-1/2 flex min-w-0 flex-col items-start text-left z-10 w-full mb-16 lg:mb-0"
         variants={containerVariants}
         initial="hidden"
         animate="visible"
@@ -91,7 +91,7 @@ export default function HeroSection() {
         </motion.div>
 
         <motion.h1 
-          className="text-6xl sm:text-7xl lg:text-8xl font-black tracking-tight text-text-primary leading-[1.05] mb-8"
+          className="text-5xl sm:text-7xl lg:text-8xl font-black tracking-tight text-text-primary leading-[1.04] mb-8"
           variants={itemVariants}
         >
           Elevate Your Skills.<br />
@@ -144,7 +144,7 @@ export default function HeroSection() {
 
       {/* Right Column: Visual Mockup */}
       <motion.div 
-        className="lg:w-1/2 relative flex justify-center lg:justify-end w-full"
+        className="lg:w-1/2 relative flex min-w-0 justify-center lg:justify-end w-full"
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.8, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}

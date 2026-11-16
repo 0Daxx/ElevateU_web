@@ -4,16 +4,17 @@
 
 /* ─── Design Token: Light Mode CSS Variables ─────────────────────────────── */
 :root {
-  --color-primary: #212936;
-  --color-secondary: #879783;
-  --color-accent: #C77357;
-  --color-success: #879783;
-  --color-warning: #F59E0B;
-  --color-danger: #EF4444;
-  --color-text-primary: #212936;
-  --color-text-secondary: #5A6578;
-  --color-border: #E0DDD6;
-  --color-bg-page: #F7F4ED;
+  --color-primary: #263B80;
+  --color-secondary: #45B7A6;
+  --color-accent: #7565D9;
+  --color-accent-soft: #E9EDFF;
+  --color-success: #32A98F;
+  --color-warning: #E9AA32;
+  --color-danger: #E35D6A;
+  --color-text-primary: #252B3A;
+  --color-text-secondary: #68738A;
+  --color-border: #E4E8F1;
+  --color-bg-page: #F7F8FC;
   --color-bg-surface: #FFFFFF;
   --color-header-bg: #FFFFFF;
 }
@@ -21,18 +22,19 @@
 /* ─── Design Token: Dark Mode CSS Variables ──────────────────────────────── */
 /* Applied when ThemeContext adds 'dark' class to <html> */
 html.dark {
-  --color-primary: #212936;
-  --color-secondary: #879783;
-  --color-accent: #C77357;
-  --color-success: #879783;
-  --color-warning: #FBBF24;
-  --color-danger: #F87171;
-  --color-text-primary: #F7F4ED;
-  --color-text-secondary: #A0ABB8;
-  --color-border: #3A3F48;
-  --color-bg-page: #1A1F28;
-  --color-bg-surface: #212936;
-  --color-header-bg: #1A1F28;
+  --color-primary: #91A6FF;
+  --color-secondary: #61D0B8;
+  --color-accent: #A99AFB;
+  --color-accent-soft: #292A49;
+  --color-success: #61D0B8;
+  --color-warning: #F3C565;
+  --color-danger: #FF8790;
+  --color-text-primary: #F3F5FF;
+  --color-text-secondary: #AEB7CE;
+  --color-border: #343B57;
+  --color-bg-page: #151A2B;
+  --color-bg-surface: #20263B;
+  --color-header-bg: #1B2134;
 }
 
 /* ─── Base Typography & Background ───────────────────────────────────────── */
@@ -42,6 +44,20 @@ html, body {
   color: var(--color-text-primary);
   /* Smooth animated transition when switching between light and dark themes */
   @apply transition-colors duration-300;
+}
+
+body {
+  min-width: 320px;
+  background-image: radial-gradient(ellipse at 92% 0%, color-mix(in srgb, var(--color-accent-soft) 52%, transparent), transparent 34rem);
+}
+
+button, a, input, textarea, select {
+  -webkit-tap-highlight-color: transparent;
+}
+
+::selection {
+  color: var(--color-primary);
+  background: var(--color-accent-soft);
 }
 
 /* ─── Custom Scrollbar ────────────────────────────────────────────────────── */

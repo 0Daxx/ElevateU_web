@@ -22,21 +22,21 @@ export default function Button({
   ...props
 }) {
   // Common styling for buttons (focus, disable, click feedback)
-  const baseClasses = 'inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-95';
+  const baseClasses = 'inline-flex items-center justify-center font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:pointer-events-none active:scale-[0.98]';
 
   // Theme-aware variant styles utilizing the color design tokens
   const variants = {
-    primary: 'bg-accent hover:bg-accent/90 text-white shadow-sm ring-offset-bg-page focus:ring-accent',
-    secondary: 'bg-secondary hover:bg-secondary/90 text-white shadow-sm ring-offset-bg-page focus:ring-secondary',
+    primary: 'bg-primary hover:bg-primary/90 text-white shadow-sm shadow-primary/15 ring-offset-bg-page focus:ring-accent',
+    secondary: 'bg-secondary hover:bg-secondary/90 text-white shadow-sm shadow-secondary/15 ring-offset-bg-page focus:ring-secondary',
     outline: 'border border-border bg-bg-surface hover:bg-bg-page text-text-primary ring-offset-bg-surface focus:ring-accent',
     ghost: 'text-text-secondary hover:text-text-primary hover:bg-bg-page ring-offset-bg-surface focus:ring-accent',
   };
 
   // Size styles
   const sizes = {
-    sm: 'px-3 py-1.5 text-xs rounded-md',
-    md: 'px-4 py-2 text-sm rounded-lg',
-    lg: 'px-6 py-3 text-base rounded-xl',
+    sm: 'px-3.5 py-2 text-xs rounded-xl',
+    md: 'px-5 py-2.5 text-sm rounded-xl',
+    lg: 'px-6 py-3.5 text-base rounded-2xl',
   };
 
   return (

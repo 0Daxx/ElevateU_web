@@ -197,7 +197,7 @@ function DashboardSkeleton() {
  */
 function StatCard({ label, sub, accent, icon: Icon, children }) {
   return (
-    <Card className="p-5 flex flex-col items-center text-center gap-3 hover:scale-[1.02] transition-transform duration-200">
+    <Card className="p-5 sm:p-6 min-h-[214px] flex flex-col items-center text-center gap-3 bg-gradient-to-b from-bg-surface to-bg-page/75 hover:-translate-y-1 hover:shadow-[0_14px_34px_rgba(38,59,128,0.09)] transition-all duration-200">
       <div className="flex items-center gap-2 w-full justify-center">
         {Icon && (
           <div className={`p-1.5 rounded-lg ${accent}`}>
@@ -345,8 +345,10 @@ export default function Dashboard() {
   return (
     <div className="space-y-6 text-left">
       <SEO title="Dashboard" noIndex={true} />{/* ── GREETING HEADER ────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="relative overflow-hidden rounded-[26px] border border-accent/10 bg-gradient-to-br from-bg-surface via-bg-surface to-accent-soft/70 px-6 py-6 sm:px-8 sm:py-7 shadow-[0_8px_28px_rgba(38,59,128,0.045)] flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="absolute -right-10 -top-20 h-48 w-48 rounded-full bg-accent/10 blur-3xl pointer-events-none" />
         <div>
+          <p className="text-xs font-bold uppercase tracking-[0.16em] text-accent mb-2">Your learning journey</p>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
             {salutation},{' '}
             <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -355,7 +357,7 @@ export default function Dashboard() {
           </h1>
           <p className="text-sm text-text-secondary mt-0.5">{today}</p>
         </div>
-        <Badge variant="info" className="self-start sm:self-auto text-xs">
+        <Badge variant="info" className="relative self-start sm:self-auto text-xs px-3 py-1.5">
           Career Readiness · {roadmapProgress}%
         </Badge>
       </div>

@@ -28,11 +28,11 @@ export default function Sidebar({ isOpen, onClose }) {
 
   // Dynamic CSS classes for active links targeting color tokens
   const linkClasses = ({ isActive }) => {
-    const base = 'flex items-center gap-3 px-4 py-3 text-sm font-semibold rounded-xl transition-all duration-200 select-none';
+    const base = 'flex items-center gap-3 px-4 py-3.5 text-sm font-semibold rounded-2xl transition-all duration-200 select-none';
     if (isActive) {
-      return `${base} bg-accent/10 text-accent font-bold`;
+      return `${base} bg-accent-soft text-primary font-bold shadow-sm shadow-primary/5`;
     }
-    return `${base} text-text-secondary hover:text-text-primary hover:bg-bg-page`;
+    return `${base} text-text-secondary hover:text-primary hover:bg-accent-soft/60`;
   };
 
   return (
@@ -41,13 +41,13 @@ export default function Sidebar({ isOpen, onClose }) {
       {isOpen && (
         <div
           onClick={onClose}
-          className="fixed inset-0 bg-black/40 backdrop-blur-xs z-45 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-primary/30 backdrop-blur-sm z-45 md:hidden transition-opacity duration-300"
         />
       )}
 
       {/* Sidebar Panel Container */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 w-64 bg-bg-surface border-r border-border z-50 md:z-30 md:top-16 flex flex-col transition-transform duration-300 md:translate-x-0 ${
+        className={`fixed top-0 bottom-0 left-0 w-64 bg-bg-surface border-r border-border/80 shadow-[8px_0_28px_rgba(38,59,128,0.035)] z-50 md:z-30 md:top-16 flex flex-col transition-transform duration-300 md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
@@ -66,7 +66,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </div>
 
         {/* Scrollable Navigation List */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1.5 scrollbar-thin">
+        <nav className="flex-1 overflow-y-auto p-4 pt-6 space-y-1.5 scrollbar-thin">
           {navItems.map((item) => {
             const Icon = item.icon;
             return (
