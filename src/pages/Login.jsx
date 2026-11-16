@@ -66,7 +66,6 @@ function Spinner() {
 
 const TABS = [
   { id: 'email',  label: 'Email' },
-  { id: 'phone',  label: 'Phone OTP' },
   { id: 'google', label: 'Google' },
 ];
 
