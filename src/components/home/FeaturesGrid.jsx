@@ -68,21 +68,21 @@ export default function FeaturesGrid() {
   };
 
   return (
-    <section id="features" className="py-24 px-6 sm:px-10 bg-bg-surface relative overflow-hidden">
+    <section id="features" className="relative overflow-hidden bg-bg-page px-5 py-20 sm:px-10 sm:py-28">
       <div className="max-w-7xl mx-auto">
-        <div className="text-center mb-20 max-w-2xl mx-auto">
-          <Badge variant="warning" className="mb-6 px-4 py-1.5 text-sm">Why ElevateU</Badge>
-          <h2 className="text-4xl sm:text-5xl font-black text-text-primary tracking-tight mb-6">
-            Everything you need to accelerate your career
+        <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16">
+          <Badge variant="warning" className="mb-4 px-4 py-1.5 text-xs font-bold uppercase tracking-wider">Explore ElevateU</Badge>
+          <h2 className="mb-4 text-3xl font-black tracking-tight text-text-primary sm:text-5xl">
+            Learn with purpose. Grow with confidence.
           </h2>
-          <p className="text-xl text-text-secondary">
-            Our AI-powered platform provides a comprehensive suite of tools to help you navigate your professional journey.
+          <p className="text-base leading-7 text-text-secondary sm:text-lg">
+            Practical guidance and learning tools to help you move from possibility to progress.
           </p>
         </div>
 
         <motion.div 
           ref={ref}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+          className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6"
           variants={containerVariants}
           initial="hidden"
           animate={inView ? "visible" : "hidden"}
@@ -101,17 +101,18 @@ export default function FeaturesGrid() {
             return (
               <motion.div key={index} variants={itemVariants}>
                 <Card 
-                  className={`p-8 h-full shadow-lg hover:shadow-2xl hover:shadow-primary/30 transition-all duration-300 hover:-translate-y-3 hover:scale-[1.04] bg-bg-page border-2 border-border border-t-4 ${topBorders[feature.variant]}`}
+                  className={`group h-full rounded-2xl border border-border bg-bg-surface p-6 shadow-[0_8px_30px_rgba(26,46,83,0.045)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_44px_rgba(26,46,83,0.12)] sm:p-7 ${topBorders[feature.variant]}`}
                 >
-                  <div className="mb-8 inline-flex">
-                    <Badge variant={feature.variant} className="p-5 rounded-[2rem]">
-                      <Icon className="w-10 h-10" />
+                  <div className="mb-6 flex items-start justify-between">
+                    <Badge variant={feature.variant} className="rounded-2xl p-4 transition-transform duration-300 group-hover:scale-105">
+                      <Icon className="h-7 w-7" />
                     </Badge>
+                    <span className="font-serif text-2xl text-secondary/70">0{index + 1}</span>
                   </div>
-                  <h3 className="text-2xl font-bold text-text-primary mb-4">
+                  <h3 className="mb-2 text-xl font-extrabold text-text-primary">
                     {feature.title}
                   </h3>
-                  <p className="text-lg text-text-secondary leading-relaxed">
+                  <p className="text-sm leading-6 text-text-secondary sm:text-base">
                     {feature.description}
                   </p>
                 </Card>

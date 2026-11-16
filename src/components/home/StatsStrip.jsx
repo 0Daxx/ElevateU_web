@@ -58,12 +58,13 @@ export default function StatsStrip() {
   };
 
   return (
-    <section 
+    <section
       ref={ref}
-      className="bg-gradient-to-r from-primary to-secondary py-16 px-6 sm:px-10 overflow-hidden"
+      className="relative isolate overflow-hidden bg-primary px-6 py-16 sm:px-10 sm:py-20"
+      style={{ backgroundImage: "linear-gradient(90deg, rgba(25,61,67,.94), rgba(33,99,89,.88)), url('https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=2200&q=80')", backgroundPosition: 'center', backgroundSize: 'cover' }}
     >
       <motion.div 
-        className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 divide-y sm:divide-y-0 sm:divide-x divide-bg-page/20"
+        className="max-w-7xl mx-auto grid grid-cols-2 gap-7 sm:grid-cols-2 lg:grid-cols-4 lg:gap-8"
         variants={containerVariants}
         initial="hidden"
         animate={inView ? "visible" : "hidden"}
@@ -71,15 +72,15 @@ export default function StatsStrip() {
         {STATS.map((stat, index) => (
           <motion.div 
             key={index} 
-            className="flex flex-col items-center justify-center text-center pt-8 sm:pt-0 first:pt-0"
+            className="flex flex-col items-center justify-center rounded-2xl border border-white/15 bg-white/5 px-3 py-6 text-center backdrop-blur-[2px] sm:py-8"
             variants={itemVariants}
           >
-            <h3 className="text-4xl sm:text-5xl lg:text-6xl font-black text-warning mb-3 tracking-tight">
+            <h3 className="mb-2 text-3xl font-black tracking-tight text-amber-300 sm:text-5xl">
               {stat.prefix}
               <CountUp target={stat.value} inView={inView} />
               {stat.suffix}
             </h3>
-            <p className="text-base font-bold text-bg-page uppercase tracking-widest drop-shadow-sm">
+            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-white/90 sm:text-xs sm:tracking-[0.18em]">
               {stat.label}
             </p>
           </motion.div>
