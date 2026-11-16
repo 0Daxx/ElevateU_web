@@ -48,6 +48,20 @@ const gateway = createLlmGateway({
   },
 });
 
+// Client-supplied default provider credentials (from VITE_PUBLIC_* env vars). Only
+// whitelisted providers are accepted; server-side secrets remain higher priority.
+function sanitizeProviderKeys(value: unknown): Record<string, string> | null {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const allowed = new Set(['groq', 'cerebras']);
+  const keys: Record<string, string> = {};
+  for (const [provider, raw] of Object.entries(value as Record<string, unknown>)) {
+    if (!allowed.has(provider) || typeof raw !== 'string') continue;
+    const trimmed = raw.slice(0, 2048);
+    if (trimmed.trim()) keys[provider] = trimmed;
+  }
+  return Object.keys(keys).length ? keys : null;
+}
+
 Deno.serve(async (request) => {
   if (request.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   if (request.method !== 'POST') return json({ error: 'Method not allowed' }, 405);
@@ -62,7 +76,7 @@ Deno.serve(async (request) => {
   const { data: { user }, error: authError } = await userClient.auth.getUser();
   if (authError || !user) return json({ error: 'Your session is no longer valid. Please sign in again.' }, 401);
 
-  let body: { messages?: unknown; stream?: unknown; jsonSchema?: unknown; tools?: unknown; useOnlyMyKeys?: unknown };
+  let body: { messages?: unknown; stream?: unknown; jsonSchema?: unknown; tools?: unknown; useOnlyMyKeys?: unknown; providerKeys?: unknown; providerOrder?: unknown };
   try {
     const raw = await request.text();
     if (new TextEncoder().encode(raw).byteLength > 1_000_000) {
@@ -81,6 +95,8 @@ Deno.serve(async (request) => {
       userId: user.id,
       signal: request.signal,
       useOnlyMyKeys: body.useOnlyMyKeys === true,
+      providerKeys: sanitizeProviderKeys(body.providerKeys),
+      providerOrder: typeof body.providerOrder === 'string' ? body.providerOrder.slice(0, 64) : null,
     });
     if (result.stream) {
       return new Response(result.stream, {

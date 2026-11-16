@@ -1,4 +1,13 @@
 import { supabase } from '../config/supabaseClient';
+import { CEREBRAS_KEYS, GROQ_KEYS, LLM_PROVIDER_ORDER } from '../config/env';
+
+// Default AI provider credentials (from VITE_PUBLIC_GROQ_KEYS / VITE_PUBLIC_CEREBRAS_KEYS).
+// The edge functions prefer dedicated server secrets when present and use these only as defaults.
+const aiCredentialOverrides = () => ({
+  ...(GROQ_KEYS ? { groqKeys: GROQ_KEYS } : {}),
+  ...(CEREBRAS_KEYS ? { cerebrasKeys: CEREBRAS_KEYS } : {}),
+  ...(LLM_PROVIDER_ORDER ? { providerOrder: LLM_PROVIDER_ORDER } : {}),
+});
 
 function mapMetadata(row) {
   return {
@@ -31,6 +40,8 @@ export async function analyzeResume(file, userId, useOnlyMyKeys = false) {
   const body = new FormData();
   body.append('file', file, file.name);
   body.append('useOnlyMyKeys', String(useOnlyMyKeys));
+  const overrides = aiCredentialOverrides();
+  if (Object.keys(overrides).length) body.append('aiConfig', JSON.stringify(overrides));
   const { data, error } = await supabase.functions.invoke('resume-analysis', { body });
   if (error) throw new Error(await readFunctionError(error));
   if (!data?.record?.id || !data?.analysis) throw new Error('Resume analysis returned an incomplete result. Please retry.');

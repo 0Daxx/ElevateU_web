@@ -138,15 +138,40 @@ export function createLlmGateway({
   const invalidKeys = new Set();
   const cooldowns = new Map();
 
-  async function providerCandidates(userId, priority, useOnlyMyKeys) {
+  function platformKeysForProvider(providerConfig, overrideValue = null) {
+    // Each configured env var may hold one key or a comma-separated list; every value
+    // becomes its own candidate so a bad key falls through to the next one/provider.
+    // A request-level override (e.g. client defaults from VITE_PUBLIC_* keys) is tried
+    // first, but server-side secrets still get their own candidates afterwards.
+    const envNames = providerConfig.apiKeyEnvs || (providerConfig.apiKeyEnv ? [providerConfig.apiKeyEnv] : []);
+    const sources = [];
+    if (typeof overrideValue === 'string' && overrideValue.trim()) sources.push(overrideValue);
+    for (const envName of envNames) {
+      const raw = getEnv(envName);
+      if (raw) sources.push(raw);
+    }
+    const keys = [];
+    for (const source of sources) {
+      for (const key of String(source).split(',')) {
+        const trimmed = key.trim();
+        if (trimmed && !keys.includes(trimmed)) keys.push(trimmed);
+      }
+    }
+    return keys;
+  }
+
+  async function providerCandidates(userId, priority, useOnlyMyKeys, requestOverrides = {}) {
     const candidates = [];
     for (const provider of priority) {
       const providerConfig = config.providers[provider];
       if (!providerConfig) continue;
       const userKey = await resolveUserProviderKey(userId, provider);
       if (userKey) candidates.push({ provider, key: userKey, source: 'user' });
-      const platformKey = getEnv(providerConfig.apiKeyEnv);
-      if (!useOnlyMyKeys && platformKey) candidates.push({ provider, key: platformKey, source: 'platform' });
+      if (!useOnlyMyKeys) {
+        for (const key of platformKeysForProvider(providerConfig, requestOverrides[provider])) {
+          candidates.push({ provider, key, source: 'platform' });
+        }
+      }
     }
     return candidates;
   }
@@ -270,13 +295,14 @@ export function createLlmGateway({
     }
   }
 
-  async function llmChat({ messages, stream = false, jsonSchema, userId, signal, tools, useOnlyMyKeys = false } = {}) {
+  async function llmChat({ messages, stream = false, jsonSchema, userId, signal, tools, useOnlyMyKeys = false, providerKeys = null, providerOrder = null } = {}) {
     validateRequest({ messages, userId });
     if (!await consumeRateLimit(userId, config.requestsPerMinute)) {
       throw new LlmGatewayError('You have reached the AI request limit. Please try again in a minute.', 429);
     }
-    const priority = getProviderPriority(getEnv('LLM_PROVIDER_ORDER'), config.priority);
-    const candidates = await providerCandidates(userId, priority, useOnlyMyKeys);
+    const priority = getProviderPriority(providerOrder || getEnv('LLM_PROVIDER_ORDER'), config.priority);
+    const overrides = providerKeys && typeof providerKeys === 'object' ? providerKeys : {};
+    const candidates = await providerCandidates(userId, priority, useOnlyMyKeys, overrides);
     if (!candidates.length && useOnlyMyKeys) {
       throw new LlmGatewayError('Add and verify a Groq or Cerebras key in Settings, or turn off “Use only my keys.”', 400);
     }
